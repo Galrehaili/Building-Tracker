@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Building Shared Services Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1E2A24;
+    --paper:#F6F4EE;
+    --paper-2:#ECE8DC;
+    --card:#FFFFFF;
+    --line: rgba(30,42,36,0.10);
+    --moss:#3F5B49;
+    --moss-deep:#28382F;
+    --clay:#B5622F;
+    --gold:#C79A3C;
+    --danger:#B3452F;
+    --muted:#6B7A70;
+    --radius-lg:22px;
+    --radius-md:14px;
+    --radius-sm:9px;
+    box-sizing:border-box;
+    padding-top: env(safe-area-inset-top,0px);
+    padding-bottom: env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-padding-top: env(safe-area-inset-top,0px); height:100%;}
+  body{
+    margin:0; height:100%;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter','Tajawal',system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.serif{font-family:'Fraunces','Tajawal',Georgia,serif;}
+  html[dir="rtl"] h1, html[dir="rtl"] h2, html[dir="rtl"] h3, html[dir="rtl"] .serif{
+    font-family:'Tajawal','Inter',sans-serif; font-weight:700; letter-spacing:0;
+  }
+  html[dir="rtl"] body{font-family:'Tajawal','Inter',system-ui,sans-serif;}
+  #app{max-width:480px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;position:relative;background:var(--paper);}
+
+  /* ---- Top bar ---- */
+  .topbar{
+    position:sticky; top:0; z-index:20;
+    padding: calc(14px + env(safe-area-inset-top,0px)) 18px 12px;
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  .brand{display:flex; flex-direction:column; line-height:1.1;}
+  .brand small{font-size:11px; color:var(--muted); letter-spacing:.02em;}
+  .brand h1{font-size:19px; margin:1px 0 0; font-weight:600;}
+  .topbar-right{display:flex; align-items:center; gap:8px;}
+  .lang-pill{
+    font-size:12px; font-weight:600; color:var(--moss);
+    padding:6px 11px; border-radius:999px; background:var(--card); border:1px solid var(--moss);
+    cursor:pointer; white-space:nowrap;
+  }
+  .sync-pill{
+    display:flex; align-items:center; gap:6px;
+    font-size:12px; color:var(--muted);
+    padding:6px 10px; border-radius:999px; background:var(--card); border:1px solid var(--line);
+    white-space:nowrap; cursor:pointer;
+  }
+  .dot{width:8px;height:8px;border-radius:50%; flex:none;}
+  .dot.green{background:#3E8E5A;}
+  .dot.sync{background:#C79A3C; animation:pulse 1.1s infinite ease-in-out;}
+  .dot.offline{background:#C98A3A;}
+  .dot.red{background:#B3452F;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+
+  .month-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 18px; gap:8px; background:var(--paper);
+  }
+  .month-btn{
+    border:none; background:transparent; color:var(--moss); font-size:20px; line-height:1;
+    width:34px;height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  }
+  .month-btn:active{background:var(--paper-2);}
+  .month-label{font-family:'Fraunces',serif; font-weight:600; font-size:17px; text-align:center;}
+  html[dir="rtl"] .month-label{font-family:'Tajawal',sans-serif;}
+  .month-label small{display:block; font-family:'Inter',sans-serif; font-weight:400; font-size:11.5px; color:var(--muted); margin-top:1px;}
+  html[dir="rtl"] .month-label small{font-family:'Tajawal',sans-serif;}
+
+  main{flex:1; padding:6px 18px 100px;}
+  .screen{display:none; animation:fade .18s ease;}
+  .screen.active{display:block;}
+  @keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+
+  /* ---- Cards ---- */
+  .card{
+    background:var(--card); border-radius:var(--radius-lg); border:1px solid var(--line);
+    padding:16px 18px; margin-bottom:12px;
+  }
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0;}
+  .stat{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius-md);
+    padding:14px 14px 12px;
+  }
+  .stat .label{font-size:11.5px; color:var(--muted); font-weight:500;}
+  .stat .value{font-family:'Fraunces',serif; font-size:22px; font-weight:600; margin-top:3px;}
+  html[dir="rtl"] .stat .value{font-family:'Tajawal',sans-serif;}
+  .stat.accent{background:var(--moss); border-color:var(--moss);}
+  .stat.accent .label{color:rgba(255,255,255,.7);}
+  .stat.accent .value{color:#fff;}
+  .stat.warn .value{color:var(--clay);}
+
+  .progress-wrap{margin-top:4px;}
+  .progress-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+  .progress-top .count{font-family:'Fraunces',serif; font-size:18px; font-weight:600;}
+  html[dir="rtl"] .progress-top .count{font-family:'Tajawal',sans-serif;}
+  .progress-top .pct{color:var(--muted); font-size:13px;}
+  .progress-track{height:10px; border-radius:999px; background:var(--paper-2); overflow:hidden;}
+  .progress-fill{height:100%; background:linear-gradient(90deg,var(--moss),var(--gold)); border-radius:999px; transition:width .35s ease;}
+
+  .section-title{font-family:'Fraunces',serif; font-size:15.5px; font-weight:600; margin:18px 2px 8px; display:flex; justify-content:space-between; align-items:center;}
+  html[dir="rtl"] .section-title{font-family:'Tajawal',sans-serif;}
+  .section-title .hint{font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); font-weight:400;}
+  html[dir="rtl"] .section-title .hint{font-family:'Tajawal',sans-serif;}
+
+  /* apartment rows */
+  .apt-row{
+    display:flex; align-items:center; gap:12px; padding:13px 14px;
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius-md); margin-bottom:8px;
+  }
+  .apt-check{
+    width:26px;height:26px; border-radius:50%; border:2px solid var(--line); flex:none;
+    display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px;
+  }
+  .apt-check.paid{background:var(--moss); border-color:var(--moss);}
+  .apt-body{flex:1; min-width:0;}
+  .apt-name{font-weight:600; font-size:14.5px;}
+  .apt-meta{font-size:12px; color:var(--muted); margin-top:1px; display:flex; gap:6px; align-items:center; flex-wrap:wrap;}
+  .apt-amount{font-family:'Fraunces',serif; font-weight:600; font-size:14.5px; white-space:nowrap;}
+  html[dir="rtl"] .apt-amount{font-family:'Tajawal',sans-serif;}
+  .receipt-chip{font-size:11px; color:var(--moss); border:1px solid var(--moss); border-radius:999px; padding:1px 7px;}
+  .icon-btn{background:none; border:none; color:var(--danger); font-size:17px; padding:8px; flex:none; border-radius:50%; line-height:1;}
+  .icon-btn:active{background:#F3E4DC;}
+
+  /* forms */
+  label.field{display:block; margin-bottom:14px;}
+  label.field span{display:block; font-size:12.5px; color:var(--muted); margin-bottom:5px; font-weight:500;}
+  input[type=text], input[type=number], input[type=date], textarea, select{
+    width:100%; padding:11px 13px; border-radius:var(--radius-sm); border:1px solid var(--line);
+    background:var(--paper); font-size:15px; font-family:inherit; color:var(--ink); line-height:1.3;
+  }
+  input[type=text], input[type=number], input[type=date], select{height:48px;}
+  input:focus, textarea:focus, select:focus{outline:2px solid var(--moss); outline-offset:1px;}
+  textarea{min-height:60px; resize:vertical;}
+  input, textarea, button, select{-webkit-tap-highlight-color:transparent; tap-highlight-color:transparent;}
+  input[type=number]{direction:ltr; text-align:right;}
+  html[dir="rtl"] input[type=number]{text-align:right;}
+  input[type=date]{direction:ltr; -webkit-appearance:none; appearance:none; overflow:hidden;}
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    border:none; border-radius:999px; padding:12px 18px; font-size:14.5px; font-weight:600;
+    cursor:pointer; font-family:inherit;
+  }
+  .btn-primary{background:var(--moss); color:#fff; width:100%;}
+  .btn-primary:active{background:var(--moss-deep);}
+  .btn-ghost{background:transparent; color:var(--moss); border:1px solid var(--moss);}
+  .btn-danger{background:transparent; color:var(--danger); border:1px solid var(--danger);}
+  .btn-block{width:100%;}
+  .btn-sm{padding:8px 13px; font-size:13px;}
+  .btn[disabled]{opacity:.5;}
+
+  .row-split{display:flex; gap:10px;}
+  .row-split > *{flex:1;}
+
+  /* nav */
+  nav{
+    position:fixed; left:0; right:0; bottom:0; z-index:30;
+    max-width:480px; margin:0 auto;
+    background:var(--card); border-top:1px solid var(--line);
+    padding: 8px 8px calc(10px + env(safe-area-inset-bottom,0px));
+    display:flex; justify-content:space-around;
+  }
+  nav button{
+    background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:3px;
+    color:var(--muted); font-size:10.5px; font-family:inherit; padding:4px 6px; flex:1;
+  }
+  nav button.active{color:var(--moss);}
+  nav svg{width:21px; height:21px;}
+
+  /* modal */
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(20,26,22,.42); z-index:50;
+    display:flex; align-items:flex-end; opacity:0; pointer-events:none; transition:opacity .18s ease;
+  }
+  .modal-backdrop.open{opacity:1; pointer-events:auto;}
+  .modal{
+    background:var(--paper); width:100%; max-width:480px; margin:0 auto;
+    border-radius:24px 24px 0 0; padding:20px 20px calc(24px + env(safe-area-inset-bottom,0px));
+    max-height:88vh; overflow-y:auto;
+    transform:translateY(16px); transition:transform .18s ease;
+  }
+  .modal-backdrop.open .modal{transform:translateY(0);}
+  .modal-handle{width:36px;height:4px;background:var(--line); border-radius:999px; margin:0 auto 14px;}
+  .modal h2{font-size:19px; margin:0 0 14px;}
+  .kv{display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); font-size:14px; gap:10px;}
+  .kv:last-of-type{border-bottom:none;}
+  .kv .k{color:var(--muted); white-space:nowrap;}
+  .kv .v{font-weight:600; text-align:end;}
+
+  .banner{
+    background:#FBF3E3; border:1px solid #E9D6A8; color:#7A5A1F; border-radius:var(--radius-md);
+    padding:12px 14px; font-size:13px; margin-bottom:12px; line-height:1.5;
+  }
+  .banner a{color:inherit; font-weight:600; cursor:pointer;}
+  .empty{text-align:center; padding:36px 10px; color:var(--muted); font-size:14px;}
+  .toast{
+    position:fixed; bottom:96px; left:50%; transform:translateX(-50%) translateY(8px);
+    background:var(--moss-deep); color:#fff; padding:10px 18px; border-radius:999px; font-size:13.5px;
+    opacity:0; pointer-events:none; transition:all .2s ease; z-index:60; max-width:88%; text-align:center;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .apt-editor{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .apt-editor input{flex:1;}
+  .apt-editor .idx{width:26px; font-size:12px; color:var(--muted); text-align:center; flex:none;}
+  .file-row{display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px dashed var(--line); border-radius:var(--radius-md); margin:10px 0;}
+  .file-row.has-file{border-style:solid; border-color:var(--moss);}
+  .badge{font-size:11px; padding:2px 8px; border-radius:999px; font-weight:600;}
+  .badge.paid{background:#E3EEE5; color:var(--moss-deep);}
+  .badge.unpaid{background:#F3E4DC; color:var(--danger);}
+  a.linklike{color:var(--moss); font-weight:600; text-decoration:none;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div class="brand"><small data-i18n="brand_label">BUILDING</small><h1 id="brandName">Shared Services</h1></div>
+    <div class="topbar-right">
+      <div class="lang-pill" id="langPill" onclick="Lang.toggle()">العربية</div>
+      <div class="sync-pill" id="syncPill" onclick="App.onSyncPillTap()">
+        <span class="dot green" id="syncDot"></span><span id="syncText">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="month-row" dir="ltr">
+    <button class="month-btn prev" onclick="App.shiftMonth(-1)" aria-label="Previous month">‹</button>
+    <div class="month-label" id="monthLabel" dir="auto">—<small id="monthSub"></small></div>
+    <button class="month-btn next" onclick="App.shiftMonth(1)" aria-label="Next month">›</button>
+  </div>
+
+  <main>
+    <!-- DASHBOARD -->
+    <section class="screen" id="screen-dashboard">
+      <div id="authBanner"></div>
+      <div class="stat-grid">
+        <div class="stat"><div class="label" data-i18n="stat_total">Total expenses</div><div class="value" id="statTotal">—</div></div>
+        <div class="stat accent"><div class="label" data-i18n="stat_per">Per apartment</div><div class="value" id="statPer">—</div></div>
+        <div class="stat"><div class="label" data-i18n="stat_collected">Collected</div><div class="value" id="statCollected">—</div></div>
+        <div class="stat warn"><div class="label" data-i18n="stat_remaining">Remaining</div><div class="value" id="statRemaining">—</div></div>
+      </div>
+      <div class="card progress-wrap">
+        <div class="progress-top">
+          <div class="count" id="paidCount">—</div>
+          <div class="pct" id="paidPct">0%</div>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+      <div class="section-title"><span data-i18n="dash_checklist_title">Payment checklist</span><span class="hint" onclick="App.go('payments')" style="cursor:pointer;" data-i18n="dash_see_all">See all →</span></div>
+      <div id="dashChecklist"></div>
+    </section>
+
+    <!-- EXPENSES -->
+    <section class="screen" id="screen-expenses">
+      <div class="section-title" data-i18n="section_electricity">Electricity</div>
+      <div class="card">
+        <label class="field"><span data-i18n="field_invoice_amount">Invoice amount (SAR)</span><input type="number" dir="ltr" step="0.01" min="0" id="elecAmount" oninput="App.saveExpenses()"></label>
+        <label class="field"><span data-i18n="field_invoice_date">Invoice date</span><input type="date" dir="ltr" id="elecDate" onchange="App.saveExpenses()"></label>
+        <label class="field"><span data-i18n="field_ref_number">Reference number (optional)</span><input type="text" dir="auto" id="elecRef" oninput="App.saveExpenses()"></label>
+        <label class="field"><span data-i18n="field_notes">Notes (optional)</span><textarea dir="auto" id="elecNotes" oninput="App.saveExpenses()"></textarea></label>
+      </div>
+      <div class="section-title" data-i18n="section_materials">Cleaning / service materials</div>
+      <div class="card">
+        <label class="field"><span data-i18n="field_amount">Amount (SAR)</span><input type="number" dir="ltr" step="0.01" min="0" id="matAmount" oninput="App.saveExpenses()"></label>
+        <label class="field"><span data-i18n="field_date">Date</span><input type="date" dir="ltr" id="matDate" onchange="App.saveExpenses()"></label>
+        <label class="field"><span data-i18n="field_description">Description</span><input type="text" dir="auto" id="matDesc" oninput="App.saveExpenses()"></label>
+        <label class="field"><span data-i18n="field_notes">Notes (optional)</span><textarea dir="auto" id="matNotes" oninput="App.saveExpenses()"></textarea></label>
+      </div>
+      <div class="section-title" data-i18n="section_labor">Labor salary</div>
+      <div class="card">
+        <label class="field"><span data-i18n="field_amount">Amount (SAR)</span><input type="number" dir="ltr" step="0.01" min="0" id="laborAmount" oninput="App.saveExpenses()"></label>
+        <label class="field"><span data-i18n="field_payment_date">Payment date</span><input type="date" dir="ltr" id="laborDate" onchange="App.saveExpenses()"></label>
+        <label class="field"><span data-i18n="field_notes">Notes (optional)</span><textarea dir="auto" id="laborNotes" oninput="App.saveExpenses()"></textarea></label>
+      </div>
+      <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+        <div><div style="font-size:12px;color:var(--muted);" data-i18n="label_total_month">Total this month</div>
+        <div class="serif" style="font-size:22px;font-weight:600;" id="expTotal">—</div></div>
+        <div style="text-align:end;"><div style="font-size:12px;color:var(--muted);" data-i18n="label_per_apartment">Per apartment</div>
+        <div class="serif" style="font-size:22px;font-weight:600;color:var(--moss);" id="expPer">—</div></div>
+      </div>
+    </section>
+
+    <!-- PAYMENTS -->
+    <section class="screen" id="screen-payments">
+      <div class="card" style="display:flex; justify-content:space-between; text-align:center;">
+        <div style="flex:1;"><div style="font-size:11px;color:var(--muted);" data-i18n="pay_head_paid">Paid</div><div class="serif" style="font-weight:600;font-size:17px;" id="payHeadCount">0/0</div></div>
+        <div style="flex:1;"><div style="font-size:11px;color:var(--muted);" data-i18n="pay_head_collected">Collected</div><div class="serif" style="font-weight:600;font-size:17px;" id="payHeadCollected">—</div></div>
+        <div style="flex:1;"><div style="font-size:11px;color:var(--muted);" data-i18n="pay_head_remaining">Remaining</div><div class="serif" style="font-weight:600;font-size:17px;" id="payHeadRemaining">—</div></div>
+      </div>
+      <div id="paymentsList"></div>
+    </section>
+
+    <!-- HISTORY -->
+    <section class="screen" id="screen-history">
+      <div class="section-title"><span data-i18n="hist_title">Months</span><span class="hint" id="histHint"></span></div>
+      <div id="historyList"></div>
+      <button class="btn btn-primary" style="margin-top:14px;" onclick="App.openNewMonth()" data-i18n="btn_new_month">+ Start new month</button>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="screen" id="screen-settings">
+      <div class="section-title" data-i18n="settings_building">Building</div>
+      <div class="card">
+        <label class="field"><span data-i18n="field_building_name">Building name</span><input type="text" dir="auto" id="setBuildingName" oninput="App.saveSettingsField()"></label>
+        <label class="field"><span data-i18n="field_num_apts">Number of apartments (applies to new months)</span><input type="number" dir="ltr" min="1" id="setNumApts" onchange="App.onNumAptsChange()"></label>
+        <label class="field"><span data-i18n="field_default_labor">Default labor salary (SAR)</span><input type="number" dir="ltr" step="0.01" min="0" id="setDefaultLabor" oninput="App.saveSettingsField()"></label>
+      </div>
+      <div class="section-title"><span data-i18n="settings_apartments">Apartments</span><span class="hint" data-i18n="settings_apartments_hint">rename</span></div>
+      <div class="card" id="apartmentEditor"></div>
+      <div class="section-title" data-i18n="settings_google">Google Drive & Sheets</div>
+      <div class="card" id="googleCard"></div>
+    </section>
+  </main>
+
+  <nav>
+    <button data-tab="dashboard" onclick="App.go('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="5" rx="2"/><rect x="13" y="11" width="8" height="10" rx="2"/><rect x="3" y="14" width="8" height="7" rx="2"/></svg>
+      <span data-i18n="nav_dashboard">Dashboard</span>
+    </button>
+    <button data-tab="expenses" onclick="App.go('expenses')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V6a2 2 0 0 1 2-2h9l5 5v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M14 4v5h5"/><path d="M8 13h8M8 17h5"/></svg>
+      <span data-i18n="nav_expenses">Expenses</span>
+    </button>
+    <button data-tab="payments" onclick="App.go('payments')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/></svg>
+      <span data-i18n="nav_payments">Payments</span>
+    </button>
+    <button data-tab="history" onclick="App.go('history')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v5l3 2"/></svg>
+      <span data-i18n="nav_history">History</span>
+    </button>
+    <button data-tab="settings" onclick="App.go('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .35 1.9l.05.05a2 2 0 1 1-2.85 2.85l-.05-.05a1.7 1.7 0 0 0-1.9-.35 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.08a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.9.35l-.05.05a2 2 0 1 1-2.85-2.85l.05-.05a1.7 1.7 0 0 0 .35-1.9 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.08a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.35-1.9l-.05-.05a2 2 0 1 1 2.85-2.85l.05.05a1.7 1.7 0 0 0 1.9.35H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.08a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.9-.35l.05-.05a2 2 0 1 1 2.85 2.85l-.05.05a1.7 1.7 0 0 0-.35 1.9V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.08a1.7 1.7 0 0 0-1.55 1Z"/></svg>
+      <span data-i18n="nav_settings">Settings</span>
+    </button>
+  </nav>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop" onclick="if(event.target===this) App.closeModal()">
+  <div class="modal" id="modalBody"></div>
+</div>
+<div class="toast" id="toast"></div>
+<input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" style="display:none;">
+
+<script>
+/* =========================================================================
+   Building Shared Services Tracker — English + Saudi Arabic (colloquial)
+   Google Sheets = database, Google Drive = receipt storage.
+   Local storage is used only as an offline cache + outbound sync queue,
+   never as the primary source of truth once signed in.
+   ========================================================================= */
+
+/* ---------- CONFIG ---------- */
+const CONFIG = {
+  GOOGLE_CLIENT_ID: '258433174381-8ces9s77r78jqrv22kr0tl7h2mkulilp.apps.googleusercontent.com',
+  SCOPES: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
+  ROOT_FOLDER_NAME: 'Building Shared Services',
+  RECEIPTS_FOLDER_NAME: 'Payment Receipts',
+  SHEET_NAME: 'Building Shared Services Tracker',
+  TAB_EXPENSES: 'Monthly Expenses',
+  TAB_PAYMENTS: 'Apartment Payments',
+  TAB_SETTINGS: 'Settings',
+  // Token relay worker — keeps a persistent sign-in without relying on the
+  // browser's silent-reauth cookies (which iOS Safari blocks). See worker.js.
+  WORKER_URL: 'https://bsst-auth.gassan9933.workers.dev',
+  APP_SECRET: 'jihfuv-2Tegri',
+};
+
+const CACHE_KEY = 'bsst_cache_v1';
+const QUEUE_KEY = 'bsst_queue_v1';
+const AUTH_KEY  = 'bsst_auth_v1';
+const LANG_KEY  = 'bsst_lang_v1';
+
+/* =========================================================================
+   I18N — English + Saudi colloquial Arabic
+   ========================================================================= */
+const I18N = {
+  en: {
+    brand_label:'BUILDING',
+    nav_dashboard:'Dashboard', nav_expenses:'Expenses', nav_payments:'Payments', nav_history:'History', nav_settings:'Settings',
+    sync_signed_out:'Signed out', sync_synced:'Synced', sync_syncing:'Syncing…', sync_offline:'Offline', sync_error:'Sync failed',
+    month_apts_suffix:'{n} apartments',
+    stat_total:'Total expenses', stat_per:'Per apartment', stat_collected:'Collected', stat_remaining:'Remaining',
+    paid_count:'{paid} / {total} Apartments Paid',
+    dash_checklist_title:'Payment checklist', dash_see_all:'See all →',
+    banner_not_configured:'This copy isn\u2019t connected to Google yet. Open <b>Settings → Google Drive & Sheets</b> after adding an OAuth Client ID to enable live sync.',
+    banner_not_signed_in:'Not signed in — changes are saved on this device only. <a onclick="App.go(\'settings\')">Connect Google Drive</a> to sync and store receipts.',
+    section_electricity:'Electricity', section_materials:'Cleaning / service materials', section_labor:'Labor salary',
+    field_invoice_amount:'Invoice amount (SAR)', field_invoice_date:'Invoice date', field_ref_number:'Reference number (optional)', field_notes:'Notes (optional)',
+    field_amount:'Amount (SAR)', field_date:'Date', field_description:'Description', field_payment_date:'Payment date',
+    label_total_month:'Total this month', label_per_apartment:'Per apartment',
+    pay_head_paid:'Paid', pay_head_collected:'Collected', pay_head_remaining:'Remaining',
+    empty_no_apartments:'No apartments configured yet.',
+    empty_history:'No months recorded yet.',
+    hist_title:'Months', hist_recorded:'{n} recorded',
+    btn_new_month:'+ Start new month',
+    settings_building:'Building', field_building_name:'Building name', field_num_apts:'Number of apartments (applies to new months)', field_default_labor:'Default labor salary (SAR)',
+    settings_apartments:'Apartments', settings_apartments_hint:'rename',
+    settings_google:'Google Drive & Sheets',
+    google_not_configured:'Set <code>CONFIG.WORKER_URL</code>, <code>CONFIG.APP_SECRET</code> and <code>CONFIG.GOOGLE_CLIENT_ID</code> inside this file, then reload, to enable Google sign-in, Drive folders and Sheets sync.',
+    google_connect:'Connect Google account',
+    google_connect_hint:'Creates a "{folder}" folder and tracker sheet in your Drive on first connect.',
+    google_account:'Account', google_drive_folder:'Drive folder', google_sheet:'Sheet', google_pending_changes:'Pending changes',
+    ready:'✓ Ready', pending:'Pending',
+    disconnect:'Disconnect',
+    modal_amount_due:'Amount due', modal_status:'Status', modal_payment_date:'Payment date', modal_receipt:'Receipt',
+    status_paid:'Paid', status_unpaid:'Unpaid',
+    notes:'Notes',
+    mark_paid:'Mark as paid', mark_unpaid:'Mark as unpaid',
+    receipt_view:'📎 View receipt', receipt_attach:'Attach receipt', receipt_replace:'Replace', receipt_remove:'Remove',
+    receipt_none:'No receipt attached', receipt_mark_paid_hint:'Mark this apartment as paid to attach a receipt.',
+    apt_meta_paid:'Paid · {date}', apt_meta_unpaid:'Unpaid',
+    new_month_title:'Start {month}',
+    new_month_desc:'This creates independent expense and payment records for {n} apartments. Previous months stay untouched.',
+    field_electricity_invoice:'Electricity invoice (SAR)', field_cleaning:'Cleaning / materials (SAR)', field_labor_salary:'Labor salary (SAR)',
+    btn_create_month:'Create {month}',
+    toast_connected:'Connected to Google',
+    toast_new_month:'New month created',
+    toast_uploading:'Uploading receipt…',
+    toast_sign_in_prompt:'Sign in to Google to store this receipt',
+    toast_apt_count_updated:'Apartment count updated — applies to new months',
+    toast_client_id_missing:'Add your Google Client ID in CONFIG first',
+    toast_worker_missing:'Set up the token relay worker in CONFIG first (see setup notes)',
+    confirm_reduce_apts:'Reduce to {n} apartments? This only affects new months — history is unaffected.',
+    confirm_delete_month:'Permanently delete {month} and all its data — expenses, payments and receipts? This can\u2019t be undone.',
+    toast_month_deleted:'Month deleted',
+    delete_month:'Delete month',
+    sync_error_detail:'Google said: {msg}',
+    retry:'Retry',
+    confirm_remove_receipt:'Permanently remove this receipt from Google Drive?',
+    receipt_label:'payment-receipt',
+  },
+  ar: {
+    brand_label:'العمارة',
+    nav_dashboard:'الرئيسية', nav_expenses:'المصاريف', nav_payments:'الدفعات', nav_history:'الأرشيف', nav_settings:'الإعدادات',
+    sync_signed_out:'ما راح لحد الآن', sync_synced:'مزامن', sync_syncing:'يزامن الحين…', sync_offline:'ماكو نت', sync_error:'المزامنة ما زبطت',
+    month_apts_suffix:'{n} شقة',
+    stat_total:'إجمالي المصاريف', stat_per:'نصيب كل شقة', stat_collected:'المحصّل', stat_remaining:'الباقي',
+    paid_count:'{paid} / {total} شقة دافعة',
+    dash_checklist_title:'قائمة الدفعات', dash_see_all:'شوف الكل ←',
+    banner_not_configured:'النسخة هذي ما زالت مو متوصّلة بقوقل. روح <b>الإعدادات ← قوقل درايف وشيتس</b> بعد ما تضيف رقم عميل OAuth عشان تشغّل المزامنة.',
+    banner_not_signed_in:'ما سجّلت دخول لين الحين — التغييرات محفوظة على الجهاز بس. <a onclick="App.go(\'settings\')">وصّل حساب قوقل درايف</a> عشان تزامن وتخزّن الإيصالات.',
+    section_electricity:'فاتورة الكهرباء', section_materials:'التنظيف / مواد الخدمة', section_labor:'راتب العامل',
+    field_invoice_amount:'مبلغ الفاتورة (ريال)', field_invoice_date:'تاريخ الفاتورة', field_ref_number:'رقم مرجعي (اختياري)', field_notes:'ملاحظات (اختياري)',
+    field_amount:'المبلغ (ريال)', field_date:'التاريخ', field_description:'الوصف', field_payment_date:'تاريخ الدفع',
+    label_total_month:'إجمالي الشهر', label_per_apartment:'نصيب كل شقة',
+    pay_head_paid:'دافعين', pay_head_collected:'محصّل', pay_head_remaining:'باقي',
+    empty_no_apartments:'ما فيه شقق مضافة لين الحين.',
+    empty_history:'ما فيه شهور مسجّلة لين الحين.',
+    hist_title:'الشهور', hist_recorded:'{n} مسجّل',
+    btn_new_month:'+ ابدأ شهر جديد',
+    settings_building:'العمارة', field_building_name:'اسم العمارة', field_num_apts:'عدد الشقق (يطبّق على الشهور الجديدة)', field_default_labor:'راتب العامل الافتراضي (ريال)',
+    settings_apartments:'الشقق', settings_apartments_hint:'عدّل الأسماء',
+    settings_google:'قوقل درايف وشيتس',
+    google_not_configured:'ضبّط <code>CONFIG.WORKER_URL</code> و<code>CONFIG.APP_SECRET</code> و<code>CONFIG.GOOGLE_CLIENT_ID</code> داخل الملف، وبعدها رفرش الصفحة، عشان يشتغل تسجيل الدخول ومزامنة درايف وشيتس.',
+    google_connect:'وصّل حساب قوقل',
+    google_connect_hint:'أول ما توصّل، بنسوي مجلد "{folder}" وشيت متابعة في درايفك.',
+    google_account:'الحساب', google_drive_folder:'مجلد درايف', google_sheet:'الشيت', google_pending_changes:'تغييرات معلّقة',
+    ready:'✓ جاهز', pending:'قيد الإعداد',
+    disconnect:'افصل الحساب',
+    modal_amount_due:'المبلغ المطلوب', modal_status:'الحالة', modal_payment_date:'تاريخ الدفع', modal_receipt:'الإيصال',
+    status_paid:'دافع', status_unpaid:'لسه ما دفع',
+    notes:'ملاحظات',
+    mark_paid:'علّمها مدفوعة', mark_unpaid:'رجّعها غير مدفوعة',
+    receipt_view:'📎 شوف الإيصال', receipt_attach:'أرفق إيصال', receipt_replace:'استبدل', receipt_remove:'احذف',
+    receipt_none:'ما فيه إيصال مرفق', receipt_mark_paid_hint:'لازم تعلّم الشقة مدفوعة أول عشان ترفق إيصال.',
+    apt_meta_paid:'دافع · {date}', apt_meta_unpaid:'لسه ما دفع',
+    new_month_title:'ابدأ شهر {month}',
+    new_month_desc:'بنسوي سجلات مصاريف ودفعات مستقلة لـ {n} شقة. الشهور اللي قبل ما تتأثر أبداً.',
+    field_electricity_invoice:'فاتورة الكهرباء (ريال)', field_cleaning:'التنظيف / المواد (ريال)', field_labor_salary:'راتب العامل (ريال)',
+    btn_create_month:'أنشئ شهر {month}',
+    toast_connected:'تمام، اتوصلنا بقوقل ✅',
+    toast_new_month:'الشهر الجديد جاهز',
+    toast_uploading:'يرفع الإيصال…',
+    toast_sign_in_prompt:'سجّل دخول بقوقل عشان تقدر تخزّن هالإيصال',
+    toast_apt_count_updated:'عدد الشقق تحدّث — بينطبق على الشهور الجديدة',
+    toast_client_id_missing:'ضيف رقم عميل قوقل (Client ID) في CONFIG أول شي',
+    toast_worker_missing:'جهّز سيرفر التوكن (Worker) بإعدادات CONFIG أول شي — شوف خطوات الإعداد',
+    confirm_reduce_apts:'تبي تقلّل العدد لـ {n} شقة؟ هذا بس يأثر على الشهور الجديدة — الأرشيف ما يتغيّر.',
+    confirm_delete_month:'تبي تحذف شهر {month} نهائياً مع كل بياناته — المصاريف والدفعات والإيصالات؟ ما يرجع بعد الحذف.',
+    toast_month_deleted:'تم حذف الشهر',
+    delete_month:'احذف الشهر',
+    sync_error_detail:'قوقل قال: {msg}',
+    retry:'حاول مرة ثانية',
+    confirm_remove_receipt:'تبي تحذف الإيصال هذا نهائياً من قوقل درايف؟',
+    receipt_label:'إيصال-الدفع',
+  }
+};
+
+function t(key, vars){
+  let s = (I18N[Lang.cur] && I18N[Lang.cur][key]) ?? I18N.en[key] ?? key;
+  if(vars) Object.keys(vars).forEach(k => { s = s.replace('{'+k+'}', vars[k]); });
+  return s;
+}
+
+const Lang = {
+  cur: localStorage.getItem(LANG_KEY) || 'en',
+  init(){ this.apply(false); },
+  toggle(){ this.set(this.cur==='ar' ? 'en' : 'ar'); },
+  set(l){
+    this.cur = l;
+    localStorage.setItem(LANG_KEY, l);
+    this.apply(true);
+  },
+  apply(rerender){
+    document.documentElement.lang = this.cur === 'ar' ? 'ar' : 'en';
+    document.documentElement.dir = this.cur === 'ar' ? 'rtl' : 'ltr';
+    document.querySelectorAll('[data-i18n]').forEach(el=>{
+      el.innerHTML = t(el.getAttribute('data-i18n'));
+    });
+    $('langPill').textContent = this.cur === 'ar' ? 'English' : 'العربية';
+    if(rerender){ App.render(); }
+  }
+};
+
+/* ---------- UTIL ---------- */
+const $ = (id) => document.getElementById(id);
+const money = (n) => {
+  const v = (Number(n)||0).toFixed(2);
+  return Lang.cur==='ar' ? `${v} ر.س` : `SAR ${v}`;
+};
+const monthKey = (d) => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+const DATE_LOCALE = () => Lang.cur==='ar' ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-GB';
+const monthNameFor = (key, lang) => {
+  const [y,m] = key.split('-').map(Number);
+  const d = new Date(y, m-1, 1);
+  const locale = lang==='ar' ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-GB';
+  return d.toLocaleString(locale, {month:'long', year:'numeric'});
+};
+const monthName = (key) => monthNameFor(key, Lang.cur);
+const todayISO = () => new Date().toISOString().slice(0,10);
+const prettyDate = (iso) => iso ? new Date(iso+'T00:00:00').toLocaleDateString(DATE_LOCALE(),{day:'2-digit',month:'short',year:'numeric'}) : '—';
+function uid(){ return Math.random().toString(36).slice(2,9); }
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function debounce(fn, ms){ let tm; return (...a)=>{clearTimeout(tm); tm=setTimeout(()=>fn(...a), ms);}; }
+
+/* =========================================================================
+   LOCAL CACHE  (offline-first mirror of the Sheet; queue for pending writes)
+   ========================================================================= */
+const Cache = {
+  data: null,
+  load(){
+    try{ this.data = JSON.parse(localStorage.getItem(CACHE_KEY)) || this.blank(); }
+    catch(e){ this.data = this.blank(); }
+    return this.data;
+  },
+  blank(){
+    return {
+      settings: {
+        buildingName: 'My Building',
+        numApartments: 15,
+        defaultLaborSalary: 1800,
+        apartments: Array.from({length:15}, (_,i)=>({id:'apt_'+(i+1), name:'Apartment '+(101+i)})),
+        driveFolderId: '', receiptsFolderId: '', sheetId: '',
+      },
+      months: {},
+    };
+  },
+  save(){ localStorage.setItem(CACHE_KEY, JSON.stringify(this.data)); },
+  getMonth(key){
+    if(!this.data.months[key]){
+      this.data.months[key] = App.buildBlankMonth();
+    }
+    return this.data.months[key];
+  }
+};
+
+const Queue = {
+  items(){ try{ return JSON.parse(localStorage.getItem(QUEUE_KEY))||[]; }catch(e){ return []; } },
+  set(items){ localStorage.setItem(QUEUE_KEY, JSON.stringify(items)); },
+  push(op){ const items=this.items(); items.push({...op, id: uid(), ts: Date.now()}); this.set(items); App.updateSyncUI(); App.flush(); },
+  shift(){ const items=this.items(); const first=items.shift(); this.set(items); return first; },
+  peekAll(){ return this.items(); },
+  count(){ return this.items().length; }
+};
+
+/* =========================================================================
+   GOOGLE AUTH — authorization-code flow via the token relay worker.
+   The browser only ever talks to Google for the initial consent redirect;
+   every token exchange/refresh goes through the Worker (worker.js), which
+   holds the refresh token so re-opening the app never needs a fresh
+   sign-in, even on browsers (iOS Safari) that block silent auth cookies.
+   ========================================================================= */
+const Auth = {
+  accessToken: null,
+  expiresAt: 0,
+  signedIn: false,
+  email: '',
+  workerReady(){ return !CONFIG.WORKER_URL.startsWith('https://YOUR-'); },
+
+  async init(){
+    const params = new URLSearchParams(location.search);
+    const code = params.get('code');
+    if(code){
+      // Coming back from Google's consent screen — strip the code from the
+      // visible URL immediately (so a refresh doesn't try to reuse it).
+      history.replaceState({}, '', location.pathname);
+      await this.exchangeCode(code);
+      return;
+    }
+    if(localStorage.getItem(AUTH_KEY)){
+      await this.refreshViaWorker(true); // silent resume via the worker
+    }
+  },
+
+  async workerCall(path, opts={}){
+    const res = await fetch(CONFIG.WORKER_URL + path, {
+      ...opts,
+      headers: {...(opts.headers||{}), 'X-App-Secret': CONFIG.APP_SECRET},
+    });
+    let data = null;
+    try{ data = await res.json(); }catch(e){}
+    if(!res.ok){ throw new Error((data && data.error) || (res.status+' '+res.statusText)); }
+    return data || {};
+  },
+
+  async onAccessToken(access_token, expires_in, silent){
+    this.accessToken = access_token;
+    this.expiresAt = Date.now() + (expires_in*1000) - 60000;
+    this.signedIn = true;
+    try{
+      const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {headers:this.authHeaders()}).then(r=>r.json());
+      this.email = info.email || this.email;
+    }catch(e){}
+    localStorage.setItem(AUTH_KEY, JSON.stringify({connected:true, email:this.email}));
+    App.onSignedIn(silent);
+  },
+
+  async exchangeCode(code){
+    if(!this.workerReady()){ toast(t('toast_worker_missing')); return; }
+    try{
+      const r = await this.workerCall('/exchange', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({code, redirect_uri: location.origin + location.pathname}),
+      });
+      await this.onAccessToken(r.access_token, r.expires_in, false);
+    }catch(e){
+      console.error(e);
+      toast(t('sync_error_detail',{msg:e.message}));
+    }
+  },
+
+  // Called on load (if previously connected) and whenever a token is needed
+  // but expired. Goes through the worker instead of asking Google directly,
+  // so it isn't affected by browsers blocking third-party auth cookies.
+  async refreshViaWorker(silent){
+    if(!this.workerReady()) return false;
+    try{
+      const r = await this.workerCall('/refresh');
+      await this.onAccessToken(r.access_token, r.expires_in, silent);
+      return true;
+    }catch(e){
+      console.error(e);
+      // Not connected yet, or the refresh token was revoked — stay signed out quietly.
+      App.updateSyncUI();
+      return false;
+    }
+  },
+
+  signIn(){
+    if(!this.workerReady()){ toast(t('toast_worker_missing')); return; }
+    const params = new URLSearchParams({
+      client_id: CONFIG.GOOGLE_CLIENT_ID,
+      redirect_uri: location.origin + location.pathname,
+      response_type: 'code',
+      scope: CONFIG.SCOPES,
+      access_type: 'offline',
+      prompt: 'consent', // forces Google to issue a refresh token every time
+    });
+    location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+  },
+
+  signOut(){
+    if(this.workerReady()) this.workerCall('/disconnect', {method:'POST'}).catch(()=>{});
+    this.accessToken=null; this.signedIn=false; this.expiresAt=0;
+    localStorage.removeItem(AUTH_KEY);
+    App.renderSettings(); App.updateSyncUI();
+  },
+
+  async ensureFreshToken(){
+    if(this.signedIn && Date.now() < this.expiresAt) return true;
+    return await this.refreshViaWorker(true);
+  },
+  authHeaders(){ return {'Authorization':'Bearer '+this.accessToken}; }
+};
+
+/* =========================================================================
+   DRIVE + SHEETS API  (plain fetch calls, no gapi client needed)
+   ========================================================================= */
+// Every call below goes through this — a failed request (disabled API, missing
+// scope, quota, etc.) used to be silently ignored (fetch() only rejects on a
+// network error, never on an HTTP 4xx/5xx). This makes failures visible.
+async function gapi(url, options={}){
+  const res = await fetch(url, options);
+  let data = null;
+  try{ data = await res.json(); }catch(e){}
+  if(!res.ok){
+    const msg = (data && data.error && data.error.message) || (res.status+' '+res.statusText);
+    throw new Error(msg);
+  }
+  return data || {};
+}
+async function driveFileExists(id){
+  if(!id) return false;
+  try{
+    await gapi(`https://www.googleapis.com/drive/v3/files/${id}?fields=id`, {headers: Auth.authHeaders()});
+    return true;
+  }catch(e){
+    return false; // 404 or any other failure — treat as "not usable", trigger a rebuild
+  }
+}
+
+const GDrive = {
+  async findChild(name, parentId, mimeType){
+    const q = [`name='${name.replace(/'/g,"\\'")}'`, `'${parentId||'root'}' in parents`, `trashed=false`];
+    if(mimeType) q.push(`mimeType='${mimeType}'`);
+    const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q.join(' and '))}&fields=files(id,name,webViewLink)`;
+    const r = await gapi(url, {headers: Auth.authHeaders()});
+    return (r.files && r.files[0]) || null;
+  },
+  async ensureFolder(name, parentId){
+    let f = await this.findChild(name, parentId, 'application/vnd.google-apps.folder');
+    if(f) return f.id;
+    const body = {name, mimeType:'application/vnd.google-apps.folder', parents: parentId?[parentId]:undefined};
+    const r = await gapi('https://www.googleapis.com/drive/v3/files', {
+      method:'POST', headers:{...Auth.authHeaders(),'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    return r.id;
+  },
+  async ensurePath(parts, rootId){
+    let parent = rootId;
+    for(const p of parts){ parent = await this.ensureFolder(p, parent); }
+    return parent;
+  },
+  async uploadReceipt(folderId, file){
+    const ext = file.name.split('.').pop().toLowerCase();
+    const existing = await this.findChild('payment-receipt.' + ext, folderId);
+    if(existing) await gapi(`https://www.googleapis.com/drive/v3/files/${existing.id}`, {method:'DELETE', headers:Auth.authHeaders()});
+    const metadata = {name: `payment-receipt.${ext}`, parents:[folderId]};
+    const base64 = await new Promise((res,rej)=>{
+      const rd = new FileReader();
+      rd.onload = ()=>res(rd.result.split(',')[1]);
+      rd.onerror = rej;
+      rd.readAsDataURL(file);
+    });
+    const boundary = 'bsst_' + uid();
+    const body =
+      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
+      `--${boundary}\r\nContent-Type: ${file.type||'application/octet-stream'}\r\nContent-Transfer-Encoding: base64\r\n\r\n${base64}\r\n` +
+      `--${boundary}--`;
+    const r = await gapi('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+      method:'POST', headers:{...Auth.authHeaders(),'Content-Type':`multipart/related; boundary=${boundary}`}, body
+    });
+    if(!r.webViewLink){
+      const r2 = await gapi(`https://www.googleapis.com/drive/v3/files/${r.id}?fields=webViewLink`, {headers:Auth.authHeaders()});
+      r.webViewLink = r2.webViewLink;
+    }
+    return {fileId:r.id, link:r.webViewLink};
+  },
+  async deleteFile(fileId){
+    if(!fileId) return;
+    await gapi(`https://www.googleapis.com/drive/v3/files/${fileId}`, {method:'DELETE', headers:Auth.authHeaders()});
+  }
+};
+
+const GSheets = {
+  async ensureSpreadsheet(rootFolderId){
+    let f = await GDrive.findChild(CONFIG.SHEET_NAME, rootFolderId, 'application/vnd.google-apps.spreadsheet');
+    if(f) return f.id;
+    // Create the file through the Drive API (not the Sheets API) so it's recognized
+    // as app-owned under the drive.file scope and lands in the folder immediately —
+    // a Sheets-API-created file moved afterwards via Drive API was silently failing.
+    const created = await gapi('https://www.googleapis.com/drive/v3/files', {
+      method:'POST', headers:{...Auth.authHeaders(),'Content-Type':'application/json'},
+      body: JSON.stringify({name:CONFIG.SHEET_NAME, mimeType:'application/vnd.google-apps.spreadsheet', parents:[rootFolderId]})
+    });
+    const id = created.id;
+    await this.setupTabs(id);
+    return id;
+  },
+  async setupTabs(id){
+    // A fresh spreadsheet starts with one default tab; add our three named tabs,
+    // remove the default one, then write headers.
+    const wanted = [CONFIG.TAB_EXPENSES, CONFIG.TAB_PAYMENTS, CONFIG.TAB_SETTINGS];
+    await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, {
+      method:'POST', headers:{...Auth.authHeaders(),'Content-Type':'application/json'},
+      body: JSON.stringify({requests: wanted.map(title=>({addSheet:{properties:{title}}}))})
+    });
+    const meta = await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=sheets.properties`, {headers:Auth.authHeaders()});
+    const stray = (meta.sheets||[]).find(s=>!wanted.includes(s.properties.title));
+    if(stray){
+      await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, {
+        method:'POST', headers:{...Auth.authHeaders(),'Content-Type':'application/json'},
+        body: JSON.stringify({requests:[{deleteSheet:{sheetId:stray.properties.sheetId}}]})
+      });
+    }
+    await this.writeHeaders(id);
+  },
+  async writeHeaders(id){
+    const reqs = [
+      {range:`${CONFIG.TAB_EXPENSES}!A1:F1`, values:[['Month','Electricity','Materials','Labor','Total','Amount Per Apartment']]},
+      {range:`${CONFIG.TAB_PAYMENTS}!A1:I1`, values:[['Month','Apartment','Amount Due','Paid','Payment Amount','Payment Date','Receipt File ID','Receipt Link','Notes']]},
+      {range:`${CONFIG.TAB_SETTINGS}!A1:B1`, values:[['Setting','Value']]},
+    ];
+    await this.batchUpdateValues(id, reqs);
+  },
+  async batchUpdateValues(id, valueRanges){
+    await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values:batchUpdate`, {
+      method:'POST', headers:{...Auth.authHeaders(),'Content-Type':'application/json'},
+      body: JSON.stringify({valueInputOption:'USER_ENTERED', data: valueRanges})
+    });
+  },
+  async getValues(id, range){
+    const r = await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(range)}`, {headers:Auth.authHeaders()});
+    return r.values || [];
+  },
+  async appendRow(id, tab, row){
+    await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(tab+'!A1')}:append?valueInputOption=USER_ENTERED`, {
+      method:'POST', headers:{...Auth.authHeaders(),'Content-Type':'application/json'}, body: JSON.stringify({values:[row]})
+    });
+  },
+  async upsertRow(id, tab, keyA, keyB, row, numCols){
+    const existing = await this.getValues(id, `${tab}!A2:B10000`);
+    let rowIndex = -1;
+    for(let i=0;i<existing.length;i++){
+      if(existing[i][0]===keyA && existing[i][1]===keyB){ rowIndex = i+2; break; }
+    }
+    if(rowIndex === -1){
+      await this.appendRow(id, tab, row);
+    } else {
+      const endCol = String.fromCharCode(64+numCols);
+      await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(tab+'!A'+rowIndex+':'+endCol+rowIndex)}?valueInputOption=USER_ENTERED`, {
+        method:'PUT', headers:{...Auth.authHeaders(),'Content-Type':'application/json'}, body: JSON.stringify({values:[row]})
+      });
+    }
+  },
+  async getTabSheetId(spreadsheetId, title){
+    const r = await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties`, {headers:Auth.authHeaders()});
+    const sheet = (r.sheets||[]).find(s=>s.properties.title===title);
+    return sheet ? sheet.properties.sheetId : null;
+  },
+  // Delete every row in `tab` whose column A equals monthKey (e.g. all of one month's payment rows).
+  async deleteRowsByMonth(spreadsheetId, tab, monthKey){
+    const values = await this.getValues(spreadsheetId, `${tab}!A2:A100000`);
+    const rows = [];
+    values.forEach((row,i)=>{ if(row[0]===monthKey) rows.push(i+2); }); // sheet row number (1-indexed, +1 for header)
+    if(rows.length===0) return;
+    const sheetId = await this.getTabSheetId(spreadsheetId, tab);
+    if(sheetId==null) return;
+    const requests = rows.sort((a,b)=>b-a).map(r=>({
+      deleteDimension:{range:{sheetId, dimension:'ROWS', startIndex:r-1, endIndex:r}}
+    }));
+    await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+      method:'POST', headers:{...Auth.authHeaders(),'Content-Type':'application/json'}, body: JSON.stringify({requests})
+    });
+  }
+};
+
+/* =========================================================================
+   SYNC ENGINE
+   ========================================================================= */
+const Sync = {
+  running:false,
+  async run(){
+    if(this.running) return;
+    if(!Auth.signedIn) return;
+    if(!navigator.onLine){ App.setSyncState('offline'); return; }
+    const items = Queue.peekAll();
+    if(items.length===0){ App.setSyncState('synced'); return; }
+    this.running = true;
+    App.setSyncState('syncing');
+    const ok = await Auth.ensureFreshToken();
+    if(!ok){ this.running=false; App.setSyncState('error'); return; }
+    const setupOk = await this.ensureSetup();
+    if(!setupOk){ this.running=false; App.setSyncState('error'); return; }
+    try{
+      while(Queue.count() > 0){
+        const op = Queue.items()[0];
+        await this.process(op);
+        Queue.shift();
+      }
+      this.lastError = '';
+      App.setSyncState('synced');
+    }catch(e){
+      console.error(e);
+      this.lastError = e.message || String(e);
+      App.setSyncState('error');
+    }
+    this.running=false;
+  },
+  lastError: '',
+  async ensureSetup(){
+    const s = Cache.data.settings;
+    if(s.sheetId){
+      const stillExists = await driveFileExists(s.sheetId);
+      if(stillExists) return true;
+      // The sheet (or the whole folder tree) was deleted or moved outside the app —
+      // our cached IDs are stale. Forget them and rebuild from scratch.
+      s.sheetId = ''; s.driveFolderId = ''; s.receiptsFolderId = '';
+      Cache.save();
+    }
+    try{
+      s.driveFolderId = s.driveFolderId || await GDrive.ensureFolder(CONFIG.ROOT_FOLDER_NAME, null);
+      s.receiptsFolderId = s.receiptsFolderId || await GDrive.ensureFolder(CONFIG.RECEIPTS_FOLDER_NAME, s.driveFolderId);
+      s.sheetId = await GSheets.ensureSpreadsheet(s.driveFolderId);
+      Cache.save();
+      this.lastError = '';
+      return true;
+    }catch(e){
+      console.error(e);
+      this.lastError = e.message || String(e);
+      return false;
+    }
+  },
+  async process(op){
+    const s = Cache.data.settings;
+    const sheetId = s.sheetId;
+    if(op.type==='expenses'){
+      const m = op.payload;
+      await GSheets.upsertRow(sheetId, CONFIG.TAB_EXPENSES, m.key, m.key,
+        [m.key, m.electricity.amount, m.materials.amount, m.labor.amount, m.total, m.perApartment], 6);
+    } else if(op.type==='payment'){
+      const {monthKey, apt} = op.payload;
+      await GSheets.upsertRow(sheetId, CONFIG.TAB_PAYMENTS, monthKey, apt.id,
+        [monthKey, apt.name, apt.amountDue, apt.paid?'TRUE':'FALSE', apt.paymentAmount||'', apt.paymentDate||'', apt.receiptFileId||'', apt.receiptLink||'', apt.notes||''], 9);
+    } else if(op.type==='settings'){
+      const rows = op.payload.map(([k,v])=>[k,v]);
+      await GSheets.batchUpdateValues(sheetId, [{range:`${CONFIG.TAB_SETTINGS}!A2:B${rows.length+1}`, values: rows}]);
+    } else if(op.type==='receipt-upload'){
+      const {monthKey, apt, fileMeta} = op.payload;
+      // Drive/Sheets content is always English, regardless of the app's display language.
+      const monthLabel = monthNameFor(monthKey, 'en');
+      const aptFolder = await GDrive.ensurePath([CONFIG.RECEIPTS_FOLDER_NAME, monthLabel, apt.name], s.driveFolderId);
+      const file = App._pendingFiles[fileMeta.tempId];
+      if(file){
+        const {fileId, link} = await GDrive.uploadReceipt(aptFolder, file);
+        const month = Cache.getMonth(monthKey);
+        const p = month.payments.find(x=>x.id===apt.id);
+        if(p){ p.receiptFileId=fileId; p.receiptLink=link; Cache.save(); App.render(); }
+        await GSheets.upsertRow(sheetId, CONFIG.TAB_PAYMENTS, monthKey, apt.id,
+          [monthKey, p.name, p.amountDue, p.paid?'TRUE':'FALSE', p.paymentAmount||'', p.paymentDate||'', fileId, link, p.notes||''], 9);
+        delete App._pendingFiles[fileMeta.tempId];
+      }
+    } else if(op.type==='receipt-remove'){
+      const {fileId} = op.payload;
+      await GDrive.deleteFile(fileId);
+    } else if(op.type==='month-delete'){
+      const {key} = op.payload;
+      await GSheets.deleteRowsByMonth(sheetId, CONFIG.TAB_EXPENSES, key);
+      await GSheets.deleteRowsByMonth(sheetId, CONFIG.TAB_PAYMENTS, key);
+      // The receipts folder may have been created under either language's month name.
+      for(const label of [monthNameFor(key,'en'), monthNameFor(key,'ar')]){
+        const folder = await GDrive.findChild(label, s.receiptsFolderId, 'application/vnd.google-apps.folder');
+        if(folder) await GDrive.deleteFile(folder.id);
+      }
+    }
+  }
+};
+
+/* =========================================================================
+   APP — state, rendering, event handlers
+   ========================================================================= */
+const App = {
+  current: monthKey(new Date()),
+  tab: 'dashboard',
+  activeApt: null,
+  _pendingFiles: {},
+
+  init(){
+    Cache.load();
+    Auth.init();
+    Cache.getMonth(this.current);
+    Cache.save();
+    Lang.init();
+    this.render();
+    this.updateSyncUI();
+    window.addEventListener('online', ()=>Sync.run());
+    window.addEventListener('offline', ()=>this.setSyncState('offline'));
+    setInterval(()=>{ if(Auth.signedIn) Sync.run(); }, 45000);
+  },
+
+  buildBlankMonth(){
+    const s = Cache.data.settings;
+    return {
+      key: this.current,
+      electricity:{amount:0, date:'', ref:'', notes:''},
+      materials:{amount:0, date:'', desc:'', notes:''},
+      labor:{amount:0, date:'', notes:''},
+      apartmentCount: s.apartments.length,
+      payments: s.apartments.map(a=>({
+        id:a.id, name:a.name, amountDue:0, paid:false,
+        paymentAmount:'', paymentDate:'', notes:'', receiptFileId:'', receiptLink:''
+      }))
+    };
+  },
+
+  computeTotals(m){
+    const total = (Number(m.electricity.amount)||0) + (Number(m.materials.amount)||0) + (Number(m.labor.amount)||0);
+    const per = m.apartmentCount>0 ? total/m.apartmentCount : 0;
+    return {total, per};
+  },
+
+  go(tab){
+    this.tab = tab;
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    $('screen-'+tab).classList.add('active');
+    document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+    this.render();
+  },
+
+  shiftMonth(delta){
+    const [y,m] = this.current.split('-').map(Number);
+    const d = new Date(y, m-1+delta, 1);
+    this.current = monthKey(d);
+    Cache.getMonth(this.current);
+    Cache.save();
+    this.render();
+  },
+
+  flush: debounce(()=>Sync.run(), 500),
+
+  render(){
+    const s = Cache.data.settings;
+    const m = Cache.getMonth(this.current);
+    const {total, per} = this.computeTotals(m);
+    m.payments.forEach(p => p.amountDue = per);
+
+    $('brandName').textContent = s.buildingName || (Lang.cur==='ar' ? 'الخدمات المشتركة' : 'Shared Services');
+    $('monthLabel').innerHTML = monthName(this.current) + '<small>' + t('month_apts_suffix',{n:m.payments.length}) + '</small>';
+
+    if(this.tab==='dashboard') this.renderDashboard(m,total,per);
+    if(this.tab==='expenses') this.renderExpenses(m);
+    if(this.tab==='payments') this.renderPayments(m,total,per);
+    if(this.tab==='history') this.renderHistory();
+    if(this.tab==='settings') this.renderSettings();
+  },
+
+  renderAuthBanner(){
+    const box = $('authBanner');
+    if(!box) return;
+    if(!Auth.workerReady()){
+      box.innerHTML = `<div class="banner">${t('banner_not_configured')}</div>`;
+    } else if(!Auth.signedIn){
+      box.innerHTML = `<div class="banner">${t('banner_not_signed_in')}</div>`;
+    } else { box.innerHTML = ''; }
+  },
+
+  renderDashboard(m,total,per){
+    this.renderAuthBanner();
+    $('statTotal').textContent = money(total);
+    $('statPer').textContent = money(per);
+    const collected = m.payments.filter(p=>p.paid).reduce((a,p)=>a+(Number(p.paymentAmount)||per),0);
+    const remaining = Math.max(total-collected,0);
+    $('statCollected').textContent = money(collected);
+    $('statRemaining').textContent = money(remaining);
+    const paidN = m.payments.filter(p=>p.paid).length;
+    const N = m.payments.length;
+    const pct = N? Math.round(paidN/N*100):0;
+    $('paidCount').textContent = t('paid_count',{paid:paidN,total:N});
+    $('paidPct').textContent = pct+'%';
+    $('progressFill').style.width = pct+'%';
+    $('dashChecklist').innerHTML = m.payments.slice(0,6).map(p=>this.aptRowHTML(p)).join('') ||
+      `<div class="empty">${t('empty_no_apartments')}</div>`;
+  },
+
+  renderExpenses(m){
+    $('elecAmount').value = m.electricity.amount||''; $('elecDate').value = m.electricity.date||'';
+    $('elecRef').value = m.electricity.ref||''; $('elecNotes').value = m.electricity.notes||'';
+    $('matAmount').value = m.materials.amount||''; $('matDate').value = m.materials.date||'';
+    $('matDesc').value = m.materials.desc||''; $('matNotes').value = m.materials.notes||'';
+    $('laborAmount').value = m.labor.amount||''; $('laborDate').value = m.labor.date||'';
+    $('laborNotes').value = m.labor.notes||'';
+    const {total, per} = this.computeTotals(m);
+    $('expTotal').textContent = money(total); $('expPer').textContent = money(per);
+  },
+
+  saveExpenses(){
+    const m = Cache.getMonth(this.current);
+    m.electricity = {amount: parseFloat($('elecAmount').value)||0, date:$('elecDate').value, ref:$('elecRef').value, notes:$('elecNotes').value};
+    m.materials = {amount: parseFloat($('matAmount').value)||0, date:$('matDate').value, desc:$('matDesc').value, notes:$('matNotes').value};
+    m.labor = {amount: parseFloat($('laborAmount').value)||0, date:$('laborDate').value, notes:$('laborNotes').value};
+    Cache.save();
+    this.render();
+    this.queueExpensesSave(m);
+  },
+  queueExpensesSave: debounce(function(m){
+    const {total, per} = App.computeTotals(m);
+    Queue.push({type:'expenses', payload:{key:m.key, electricity:m.electricity, materials:m.materials, labor:m.labor, total, perApartment:per}});
+  }, 700),
+
+  aptRowHTML(p){
+    const receipt = p.receiptLink ? `<span class="receipt-chip">${t('receipt_view')}</span>` : '';
+    const meta = p.paid ? t('apt_meta_paid',{date:prettyDate(p.paymentDate)}) : t('apt_meta_unpaid');
+    return `<div class="apt-row" onclick="App.openApartment('${p.id}')">
+      <div class="apt-check ${p.paid?'paid':''}">${p.paid?'✓':''}</div>
+      <div class="apt-body">
+        <div class="apt-name">${p.name}</div>
+        <div class="apt-meta">${meta} ${receipt}</div>
+      </div>
+      <div class="apt-amount">${money(p.amountDue)}</div>
+    </div>`;
+  },
+
+  renderPayments(m,total,per){
+    const paidN = m.payments.filter(p=>p.paid).length;
+    const collected = m.payments.filter(p=>p.paid).reduce((a,p)=>a+(Number(p.paymentAmount)||per),0);
+    $('payHeadCount').textContent = `${paidN}/${m.payments.length}`;
+    $('payHeadCollected').textContent = money(collected);
+    $('payHeadRemaining').textContent = money(Math.max(total-collected,0));
+    $('paymentsList').innerHTML = m.payments.map(p=>this.aptRowHTML(p)).join('') || `<div class="empty">${t('empty_no_apartments')}</div>`;
+  },
+
+  openApartment(id){
+    this.activeApt = id;
+    const m = Cache.getMonth(this.current);
+    const p = m.payments.find(x=>x.id===id);
+    if(!p) return;
+    const body = `
+      <div class="modal-handle"></div>
+      <h2 class="serif">${p.name}</h2>
+      <div class="kv"><span class="k">${t('modal_amount_due')}</span><span class="v">${money(p.amountDue)}</span></div>
+      <div class="kv"><span class="k">${t('modal_status')}</span><span class="v"><span class="badge ${p.paid?'paid':'unpaid'}">${p.paid?t('status_paid'):t('status_unpaid')}</span></span></div>
+      <div class="kv"><span class="k">${t('modal_payment_date')}</span><span class="v">${prettyDate(p.paymentDate)}</span></div>
+      <div class="kv"><span class="k">${t('modal_receipt')}</span><span class="v">${p.receiptLink? `<a class="linklike" href="${p.receiptLink}" target="_blank" rel="noopener">${t('receipt_view')}</a>` : '—'}</span></div>
+
+      <label class="field" style="margin-top:14px;"><span>${t('notes')}</span><textarea dir="auto" id="aptNotes" oninput="App.saveAptNotes()">${p.notes||''}</textarea></label>
+
+      <div class="row-split" style="margin-top:6px;">
+        <button class="btn ${p.paid?'btn-danger':'btn-primary'}" onclick="App.togglePaid()">${p.paid?t('mark_unpaid'):t('mark_paid')}</button>
+      </div>
+      <div id="receiptZone" style="margin-top:4px;"></div>
+    `;
+    $('modalBody').innerHTML = body;
+    this.renderReceiptZone(p);
+    $('modalBackdrop').classList.add('open');
+  },
+
+  renderReceiptZone(p){
+    const zone = $('receiptZone');
+    if(!zone) return;
+    if(p.receiptFileId || p.receiptLink){
+      zone.innerHTML = `<div class="file-row has-file">
+        <span style="flex:1;">📎 ${t('receipt_label')}</span>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fileInput').click()">${t('receipt_replace')}</button>
+        <button class="btn btn-danger btn-sm" onclick="App.removeReceipt()">${t('receipt_remove')}</button>
+      </div>`;
+    } else if(p.paid){
+      zone.innerHTML = `<div class="file-row"><span style="flex:1; color:var(--muted);">${t('receipt_none')}</span>
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('fileInput').click()">${t('receipt_attach')}</button></div>`;
+    } else {
+      zone.innerHTML = `<div style="font-size:12.5px;color:var(--muted);margin-top:6px;">${t('receipt_mark_paid_hint')}</div>`;
+    }
+  },
+
+  saveAptNotes(){
+    const m = Cache.getMonth(this.current);
+    const p = m.payments.find(x=>x.id===this.activeApt);
+    p.notes = $('aptNotes').value;
+    Cache.save();
+    this.queuePaymentSave(p);
+  },
+
+  togglePaid(){
+    const m = Cache.getMonth(this.current);
+    const p = m.payments.find(x=>x.id===this.activeApt);
+    p.paid = !p.paid;
+    if(p.paid){ p.paymentDate = todayISO(); p.paymentAmount = p.amountDue; }
+    else { p.paymentDate=''; p.paymentAmount=''; }
+    Cache.save();
+    this.render();
+    this.openApartment(p.id);
+    this.queuePaymentSave(p);
+  },
+  queuePaymentSave: debounce(function(p){
+    Queue.push({type:'payment', payload:{monthKey: App.current, apt:p}});
+  }, 500),
+
+  removeReceipt(){
+    const m = Cache.getMonth(this.current);
+    const p = m.payments.find(x=>x.id===this.activeApt);
+    if(!confirm(t('confirm_remove_receipt'))) return;
+    const fileId = p.receiptFileId;
+    p.receiptFileId=''; p.receiptLink='';
+    Cache.save(); this.render(); this.openApartment(p.id);
+    if(fileId) Queue.push({type:'receipt-remove', payload:{fileId}});
+    this.queuePaymentSave(p);
+  },
+
+  handleFile(file){
+    const m = Cache.getMonth(this.current);
+    const p = m.payments.find(x=>x.id===this.activeApt);
+    if(!p) return;
+    const tempId = uid();
+    this._pendingFiles[tempId] = file;
+    p.receiptLink = ''; p.receiptFileId = '';
+    Cache.save();
+    toast(Auth.signedIn ? t('toast_uploading') : t('toast_sign_in_prompt'));
+    this.renderReceiptZone(p);
+    if(Auth.signedIn){
+      Queue.push({type:'receipt-upload', payload:{monthKey:this.current, apt:{id:p.id,name:p.name}, fileMeta:{tempId, name:file.name}}});
+    }
+  },
+
+  closeModal(){ $('modalBackdrop').classList.remove('open'); this.activeApt=null; },
+
+  /* ---- History ---- */
+  renderHistory(){
+    const keys = Object.keys(Cache.data.months).sort().reverse();
+    $('histHint').textContent = t('hist_recorded',{n:keys.length});
+    $('historyList').innerHTML = keys.map(k=>{
+      const m = Cache.data.months[k];
+      const {total} = this.computeTotals(m);
+      const paidN = m.payments.filter(p=>p.paid).length;
+      const isCurrent = k===this.current;
+      return `<div class="apt-row" style="${isCurrent?'border-color:var(--moss);':''}">
+        <div class="apt-body" onclick="App.viewHistoryMonth('${k}')" style="cursor:pointer;">
+          <div class="apt-name">${monthName(k)}</div>
+          <div class="apt-meta">${paidN}/${m.payments.length} · ${t('month_apts_suffix',{n:m.apartmentCount})}</div>
+        </div>
+        <div class="apt-amount">${money(total)}</div>
+        <button class="icon-btn" onclick="event.stopPropagation(); App.deleteMonth('${k}')" aria-label="${t('delete_month')}" title="${t('delete_month')}">🗑</button>
+      </div>`;
+    }).join('') || `<div class="empty">${t('empty_history')}</div>`;
+  },
+  viewHistoryMonth(k){ this.current = k; this.go('dashboard'); },
+  deleteMonth(key){
+    if(!confirm(t('confirm_delete_month',{month:monthName(key)}))) return;
+    delete Cache.data.months[key];
+    Cache.save();
+    if(this.current === key){
+      const remaining = Object.keys(Cache.data.months).sort();
+      this.current = remaining.length ? remaining[remaining.length-1] : monthKey(new Date());
+    }
+    this.render();
+    toast(t('toast_month_deleted'));
+    Queue.push({type:'month-delete', payload:{key}});
+  },
+
+  openNewMonth(){
+    const [y,m] = this.current.split('-').map(Number);
+    const next = new Date(y, m, 1);
+    const key = monthKey(next);
+    const s = Cache.data.settings;
+    const body = `
+      <div class="modal-handle"></div>
+      <h2 class="serif">${t('new_month_title',{month:monthName(key)})}</h2>
+      <p style="color:var(--muted); font-size:13.5px; margin-top:-6px;">${t('new_month_desc',{n:s.apartments.length})}</p>
+      <label class="field"><span>${t('field_electricity_invoice')}</span><input type="number" dir="ltr" step="0.01" id="nmElec" value="0"></label>
+      <label class="field"><span>${t('field_cleaning')}</span><input type="number" dir="ltr" step="0.01" id="nmMat" value="0"></label>
+      <label class="field"><span>${t('field_labor_salary')}</span><input type="number" dir="ltr" step="0.01" id="nmLabor" value="${s.defaultLaborSalary}"></label>
+      <button class="btn btn-primary btn-block" onclick="App.confirmNewMonth('${key}')">${t('btn_create_month',{month:monthName(key)})}</button>
+    `;
+    $('modalBody').innerHTML = body;
+    $('modalBackdrop').classList.add('open');
+  },
+  confirmNewMonth(key){
+    const m = this.buildBlankMonth();
+    m.key = key;
+    m.electricity.amount = parseFloat($('nmElec').value)||0;
+    m.materials.amount = parseFloat($('nmMat').value)||0;
+    m.labor.amount = parseFloat($('nmLabor').value)||0;
+    Cache.data.months[key] = m;
+    Cache.save();
+    this.current = key;
+    this.closeModal();
+    this.go('dashboard');
+    this.queueExpensesSave(m);
+    m.payments.forEach(p=>this.queuePaymentSave(p));
+    toast(t('toast_new_month'));
+  },
+
+  /* ---- Settings ---- */
+  renderSettings(){
+    const s = Cache.data.settings;
+    $('setBuildingName').value = s.buildingName;
+    $('setNumApts').value = s.apartments.length;
+    $('setDefaultLabor').value = s.defaultLaborSalary;
+    $('apartmentEditor').innerHTML = s.apartments.map((a,i)=>`
+      <div class="apt-editor"><span class="idx">${i+1}</span>
+        <input type="text" dir="auto" value="${a.name}" onchange="App.renameApartment('${a.id}', this.value)">
+      </div>`).join('');
+
+    const g = $('googleCard');
+    if(!Auth.workerReady()){
+      g.innerHTML = `<div class="banner">${t('google_not_configured')}</div>`;
+    } else if(!Auth.signedIn){
+      g.innerHTML = `<button class="btn btn-primary btn-block" onclick="Auth.signIn()">${t('google_connect')}</button>
+        <p style="font-size:12.5px;color:var(--muted); margin-top:10px;">${t('google_connect_hint',{folder:CONFIG.ROOT_FOLDER_NAME})}</p>`;
+    } else {
+      const errBox = Sync.lastError ? `<div class="banner" style="background:#F8E4DC;border-color:#E3B49C;color:#7A2E1F;">${t('sync_error_detail',{msg:Sync.lastError})}</div>` : '';
+      g.innerHTML = `
+        ${errBox}
+        <div class="kv"><span class="k">${t('google_account')}</span><span class="v">${Auth.email||'—'}</span></div>
+        <div class="kv"><span class="k">${t('google_drive_folder')}</span><span class="v">${Cache.data.settings.driveFolderId? t('ready'):t('pending')}</span></div>
+        <div class="kv"><span class="k">${t('google_sheet')}</span><span class="v">${Cache.data.settings.sheetId? t('ready'):t('pending')}</span></div>
+        <div class="kv"><span class="k">${t('google_pending_changes')}</span><span class="v">${Queue.count()}</span></div>
+        ${!Cache.data.settings.sheetId ? `<button class="btn btn-primary btn-block" style="margin-top:12px;" onclick="App.retrySetup()">${t('retry')}</button>` : ''}
+        <button class="btn btn-ghost btn-block" style="margin-top:10px;" onclick="Auth.signOut()">${t('disconnect')}</button>
+      `;
+    }
+  },
+  retrySetup(){
+    Sync.ensureSetup().then((ok)=>{
+      this.renderSettings();
+      if(ok) Sync.run(); else toast(Sync.lastError || t('sync_error'));
+    });
+  },
+  saveSettingsField: debounce(function(){
+    const s = Cache.data.settings;
+    s.buildingName = $('setBuildingName').value;
+    s.defaultLaborSalary = parseFloat($('setDefaultLabor').value)||0;
+    Cache.save();
+    App.render();
+    Queue.push({type:'settings', payload:[
+      ['Building Name', s.buildingName],
+      ['Number of Apartments', s.apartments.length],
+      ['Default Labor Salary', s.defaultLaborSalary],
+    ]});
+  }, 600),
+  renameApartment(id, name){
+    const s = Cache.data.settings;
+    const a = s.apartments.find(x=>x.id===id);
+    if(a){ a.name = name || a.name; }
+    const m = Cache.getMonth(this.current);
+    const p = m.payments.find(x=>x.id===id);
+    if(p) p.name = a.name;
+    Cache.save();
+    if(p) this.queuePaymentSave(p);
+  },
+  onNumAptsChange(){
+    const n = Math.max(1, parseInt($('setNumApts').value)||1);
+    const s = Cache.data.settings;
+    if(n === s.apartments.length) return;
+    if(n > s.apartments.length){
+      for(let i=s.apartments.length;i<n;i++) s.apartments.push({id:'apt_'+uid(), name:'Apartment '+(101+i)});
+    } else {
+      if(!confirm(t('confirm_reduce_apts',{n}))){ $('setNumApts').value = s.apartments.length; return; }
+      s.apartments = s.apartments.slice(0,n);
+    }
+    Cache.save();
+    this.renderSettings();
+    this.saveSettingsField();
+    toast(t('toast_apt_count_updated'));
+  },
+
+  /* ---- Sync UI ---- */
+  onSignedIn(silent){
+    if(!silent) toast(t('toast_connected'));
+    this.renderSettings();
+    Sync.ensureSetup().then((ok)=>{
+      this.renderSettings();
+      if(ok) Sync.run(); else { App.setSyncState('error'); toast(Sync.lastError || t('sync_error')); }
+    });
+  },
+  onSyncPillTap(){
+    if(!Auth.workerReady()){ this.go('settings'); return; }
+    if(!Auth.signedIn){ Auth.signIn(); } else { Sync.run(); }
+  },
+  setSyncState(state){
+    const dot=$('syncDot'), txt=$('syncText');
+    dot.className='dot';
+    if(state==='synced'){ dot.classList.add('green'); txt.textContent=t('sync_synced'); }
+    else if(state==='syncing'){ dot.classList.add('sync'); txt.textContent=t('sync_syncing'); }
+    else if(state==='offline'){ dot.classList.add('offline'); txt.textContent=t('sync_offline'); }
+    else if(state==='error'){ dot.classList.add('red'); txt.textContent=t('sync_error'); }
+    else { dot.classList.add('offline'); txt.textContent=t('sync_signed_out'); }
+  },
+  updateSyncUI(){
+    if(!Auth.signedIn){ this.setSyncState('idle'); return; }
+    if(!navigator.onLine){ this.setSyncState('offline'); return; }
+    this.setSyncState(Queue.count()>0 ? 'syncing' : 'synced');
+  },
+};
+
+$('fileInput').addEventListener('change', (e)=>{
+  const f = e.target.files[0];
+  if(f) App.handleFile(f);
+  e.target.value = '';
+});
+
+window.addEventListener('load', ()=>{ App.init(); App.go('dashboard'); });
+</script>
+</body>
+</html>
