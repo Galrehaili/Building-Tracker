@@ -176,6 +176,19 @@
   .row-split{display:flex; gap:10px;}
   .row-split > *{flex:1;}
 
+  /* module switcher — a segmented control, deliberately not a second nav bar */
+  .mod-wrap{padding:10px 18px 2px;}
+  .seg{display:flex;gap:4px;padding:4px;background:var(--paper-2);border-radius:999px;overflow-x:auto;scrollbar-width:none;}
+  .seg::-webkit-scrollbar{display:none;}
+  .seg button{flex:1 1 0;min-width:0;border:none;background:transparent;color:var(--muted);font:inherit;font-size:14px;font-weight:600;padding:9px 12px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;cursor:pointer;transition:background .15s,color .15s,box-shadow .15s;}
+  .seg button.active{background:var(--card);color:var(--moss-deep);box-shadow:0 1px 3px rgba(30,42,36,.12),0 0 0 1px var(--line);}
+  .seg button:focus-visible{outline:2px solid var(--moss);outline-offset:1px;}
+  .seg.sm{background:transparent;padding:0;gap:8px;overflow:visible;border-radius:0;}
+  .seg.sm button{flex:0 0 auto;font-size:12.5px;padding:7px 14px;border:1px solid var(--line);background:var(--card);}
+  .seg.sm button.active{background:var(--moss);border-color:var(--moss);color:#fff;box-shadow:none;}
+  html[data-theme="dark"] .seg.sm button.active{color:#fff;}
+  html[data-theme="dark"] .seg button.active{color:var(--ink);}
+
   /* nav */
   nav{
     position:fixed; left:0; right:0; bottom:0; z-index:30;
@@ -186,7 +199,7 @@
   }
   nav button{
     background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:3px;
-    color:var(--muted); font-size:10.5px; font-family:inherit; padding:4px 6px; flex:1;
+    color:var(--muted); font-size:10.5px; font-family:inherit; padding:4px 4px; flex:1; justify-content:flex-start; line-height:1.15; text-align:center;
   }
   nav button.active{color:var(--moss);}
   nav svg{width:21px; height:21px;}
@@ -238,7 +251,7 @@
 <div id="app">
 
   <div class="topbar">
-    <div class="brand"><small data-i18n="brand_label">BUILDING</small><h1 id="brandName">Shared Services</h1></div>
+    <div class="brand"><small id="brandLabel">BUILDING</small><h1 id="brandName">Shared Services</h1></div>
     <div class="topbar-right">
       <div class="lang-pill" id="langPill" onclick="Lang.toggle()">العربية</div>
       <div class="sync-pill" id="syncPill" onclick="App.onSyncPillTap()">
@@ -247,7 +260,9 @@
     </div>
   </div>
 
-  <div class="month-row" dir="ltr">
+  <div class="mod-wrap" id="modWrap"><div class="seg" id="modSwitch" role="tablist" aria-label="Module"></div></div>
+
+  <div class="month-row" id="monthRow" dir="ltr">
     <button class="month-btn prev" onclick="App.shiftMonth(-1)" aria-label="Previous month">‹</button>
     <div class="month-label" id="monthLabel" dir="auto">—<small id="monthSub"></small></div>
     <button class="month-btn next" onclick="App.shiftMonth(1)" aria-label="Next month">›</button>
@@ -321,6 +336,8 @@
     </section>
 
     <!-- SETTINGS -->
+    <section class="screen" id="screen-loan"><div id="loanRoot"></div></section>
+
     <section class="screen" id="screen-settings">
       <div class="section-title" data-i18n="settings_building">Building</div>
       <div class="card">
@@ -334,28 +351,7 @@
     </section>
   </main>
 
-  <nav>
-    <button data-tab="dashboard" onclick="App.go('dashboard')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="5" rx="2"/><rect x="13" y="11" width="8" height="10" rx="2"/><rect x="3" y="14" width="8" height="7" rx="2"/></svg>
-      <span data-i18n="nav_dashboard">Dashboard</span>
-    </button>
-    <button data-tab="expenses" onclick="App.go('expenses')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V6a2 2 0 0 1 2-2h9l5 5v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M14 4v5h5"/><path d="M8 13h8M8 17h5"/></svg>
-      <span data-i18n="nav_expenses">Expenses</span>
-    </button>
-    <button data-tab="payments" onclick="App.go('payments')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/></svg>
-      <span data-i18n="nav_payments">Payments</span>
-    </button>
-    <button data-tab="history" onclick="App.go('history')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v5l3 2"/></svg>
-      <span data-i18n="nav_history">History</span>
-    </button>
-    <button data-tab="settings" onclick="App.go('settings')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .35 1.9l.05.05a2 2 0 1 1-2.85 2.85l-.05-.05a1.7 1.7 0 0 0-1.9-.35 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.08a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.9.35l-.05.05a2 2 0 1 1-2.85-2.85l.05-.05a1.7 1.7 0 0 0 .35-1.9 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.08a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.35-1.9l-.05-.05a2 2 0 1 1 2.85-2.85l.05.05a1.7 1.7 0 0 0 1.9.35H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.08a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.9-.35l.05-.05a2 2 0 1 1 2.85 2.85l-.05.05a1.7 1.7 0 0 0-.35 1.9V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.08a1.7 1.7 0 0 0-1.55 1Z"/></svg>
-      <span data-i18n="nav_settings">Settings</span>
-    </button>
-  </nav>
+  <nav id="bottomNav" aria-label="Main navigation"></nav>
 </div>
 
 <div class="modal-backdrop" id="modalBackdrop" onclick="if(event.target===this) App.closeModal()">
@@ -374,7 +370,7 @@
 
 /* ---------- CONFIG ---------- */
 const CONFIG = {
-  GOOGLE_CLIENT_ID: '258433174381-8ces9s77r78jqrv22kr0tl7h2mkulilp.apps.googleusercontent.com',
+  GOOGLE_CLIENT_ID: 'YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com',
   // drive.file is sufficient for the Sheets API too, for files this app creates —
   // no need for the much broader 'spreadsheets' scope. openid+email let the Worker
   // verify it's really you connecting, instead of trusting a hardcoded secret.
@@ -392,7 +388,13 @@ const CONFIG = {
   // No shared secret here on purpose: the worker verifies your real Google
   // identity at connect time and hands back a one-off session token, which
   // this app stores in localStorage — never in source code, never on GitHub.
-  WORKER_URL: 'https://bsst-auth.gassan9933.workers.dev',
+  WORKER_URL: 'https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev',
+  // Mortgage tracker: lets you pick your EXISTING spreadsheet/folder with Google's file
+  // picker. With the narrow drive.file scope, that picker is the only way the app can be
+  // granted access to files it didn't create. Both values are public identifiers (the key is
+  // locked to your site's address in Google Cloud), not secrets.
+  GOOGLE_API_KEY: 'YOUR_GOOGLE_API_KEY',
+  GOOGLE_APP_ID: 'YOUR_GOOGLE_PROJECT_NUMBER',
 };
 
 const SHEET_LAYOUT = 3; // bump when the Google Sheet's columns/tabs change
@@ -408,7 +410,7 @@ const LANG_KEY  = 'bsst_lang_v1';
 const I18N = {
   en: {
     brand_label:'BUILDING',
-    nav_dashboard:'Dashboard', nav_expenses:'Expenses', nav_payments:'Payments', nav_history:'History', nav_settings:'Settings',
+    nav_dashboard:'Dashboard', nav_expenses:'Expenses', nav_payments:'Payments', nav_history:'History', nav_settings:'Settings', mod_building:'Building', mod_loans:'Loans',
     sync_signed_out:'Signed out', sync_synced:'Synced', sync_syncing:'Syncing…', sync_offline:'Offline', sync_error:'Sync failed', sync_conflict:'Needs your input',
     conflict_title:'{month} doesn\u2019t match', conflict_desc:'Google Sheets already has real data for this month, but this device is about to replace it with much less. Pick which one to keep.',
     conflict_sheet_has:'In Google Sheets', conflict_device_has:'On this device', conflict_items:'items', conflict_paid:'paid',
@@ -473,7 +475,7 @@ const I18N = {
   },
   ar: {
     brand_label:'العمارة',
-    nav_dashboard:'الرئيسية', nav_expenses:'المصاريف', nav_payments:'الدفعات', nav_history:'الأرشيف', nav_settings:'الإعدادات',
+    nav_dashboard:'الرئيسية', nav_expenses:'المصاريف', nav_payments:'الدفعات', nav_history:'الأرشيف', nav_settings:'الإعدادات', mod_building:'العمارة', mod_loans:'القروض',
     sync_signed_out:'ما راح لحد الآن', sync_synced:'مزامن', sync_syncing:'يزامن الحين…', sync_offline:'ماكو نت', sync_error:'المزامنة ما زبطت', sync_conflict:'يحتاج قرارك',
     conflict_title:'شهر {month} مو متطابق', conflict_desc:'قوقل شيتس عنده بيانات حقيقية لهالشهر، والجهاز هذا بيستبدلها بأقل منها بكثير. اختر وش تبي تحتفظ فيه.',
     conflict_sheet_has:'بقوقل شيتس', conflict_device_has:'بهالجهاز', conflict_items:'عنصر', conflict_paid:'دافع',
@@ -561,7 +563,7 @@ const Lang = {
       el.innerHTML = t(el.getAttribute('data-i18n'));
     });
     $('langPill').textContent = this.cur === 'ar' ? 'English' : 'العربية';
-    if(rerender){ App.render(); }
+    if(rerender){ Shell.refresh(); }
   }
 };
 
@@ -767,12 +769,12 @@ const Auth = {
 };
 
 /* =========================================================================
-   DRIVE + SHEETS API  (plain fetch calls, no gapi client needed)
+   DRIVE + SHEETS API  (plain fetch calls, no gfetch client needed)
    ========================================================================= */
 // Every call below goes through this — a failed request (disabled API, missing
 // scope, quota, etc.) used to be silently ignored (fetch() only rejects on a
 // network error, never on an HTTP 4xx/5xx). This makes failures visible.
-async function gapi(url, options={}){
+async function gfetch(url, options={}){
   const res = await fetch(url, options);
   let data = null;
   try{ data = await res.json(); }catch(e){}
@@ -787,7 +789,7 @@ const monthCell = (key) => "'" + key; // leading apostrophe keeps "2026-09" as t
 async function driveFileExists(id){
   if(!id) return false;
   try{
-    await gapi(`https://www.googleapis.com/drive/v3/files/${id}?fields=id`, {headers: Auth.authHeaders()});
+    await gfetch(`https://www.googleapis.com/drive/v3/files/${id}?fields=id`, {headers: Auth.authHeaders()});
     return true;
   }catch(e){
     return false; // 404 or any other failure — treat as "not usable", trigger a rebuild
@@ -799,14 +801,14 @@ const GDrive = {
     const q = [`name='${name.replace(/'/g,"\\'")}'`, `'${parentId||'root'}' in parents`, `trashed=false`];
     if(mimeType) q.push(`mimeType='${mimeType}'`);
     const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q.join(' and '))}&fields=files(id,name,webViewLink)`;
-    const r = await gapi(url, {headers: Auth.authHeaders()});
+    const r = await gfetch(url, {headers: Auth.authHeaders()});
     return (r.files && r.files[0]) || null;
   },
   async ensureFolder(name, parentId){
     let f = await this.findChild(name, parentId, 'application/vnd.google-apps.folder');
     if(f) return f.id;
     const body = {name, mimeType:'application/vnd.google-apps.folder', parents: parentId?[parentId]:undefined};
-    const r = await gapi('https://www.googleapis.com/drive/v3/files', {
+    const r = await gfetch('https://www.googleapis.com/drive/v3/files', {
       method:'POST', headers:{...Auth.authHeaders(),'Content-Type':'application/json'}, body: JSON.stringify(body)
     });
     return r.id;
@@ -819,7 +821,7 @@ const GDrive = {
   async uploadReceipt(folderId, file){
     const ext = file.name.split('.').pop().toLowerCase();
     const existing = await this.findChild('payment-receipt.' + ext, folderId);
-    if(existing) await gapi(`https://www.googleapis.com/drive/v3/files/${existing.id}`, {method:'DELETE', headers:Auth.authHeaders()});
+    if(existing) await gfetch(`https://www.googleapis.com/drive/v3/files/${existing.id}`, {method:'DELETE', headers:Auth.authHeaders()});
     const metadata = {name: `payment-receipt.${ext}`, parents:[folderId]};
     const base64 = await new Promise((res,rej)=>{
       const rd = new FileReader();
@@ -832,18 +834,18 @@ const GDrive = {
       `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
       `--${boundary}\r\nContent-Type: ${file.type||'application/octet-stream'}\r\nContent-Transfer-Encoding: base64\r\n\r\n${base64}\r\n` +
       `--${boundary}--`;
-    const r = await gapi('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+    const r = await gfetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
       method:'POST', headers:{...Auth.authHeaders(),'Content-Type':`multipart/related; boundary=${boundary}`}, body
     });
     if(!r.webViewLink){
-      const r2 = await gapi(`https://www.googleapis.com/drive/v3/files/${r.id}?fields=webViewLink`, {headers:Auth.authHeaders()});
+      const r2 = await gfetch(`https://www.googleapis.com/drive/v3/files/${r.id}?fields=webViewLink`, {headers:Auth.authHeaders()});
       r.webViewLink = r2.webViewLink;
     }
     return {fileId:r.id, link:r.webViewLink};
   },
   async deleteFile(fileId){
     if(!fileId) return;
-    await gapi(`https://www.googleapis.com/drive/v3/files/${fileId}`, {method:'DELETE', headers:Auth.authHeaders()});
+    await gfetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {method:'DELETE', headers:Auth.authHeaders()});
   }
 };
 
@@ -854,7 +856,7 @@ const GSheets = {
     // Create the file through the Drive API (not the Sheets API) so it's recognized
     // as app-owned under the drive.file scope and lands in the folder immediately —
     // a Sheets-API-created file moved afterwards via Drive API was silently failing.
-    const created = await gapi('https://www.googleapis.com/drive/v3/files', {
+    const created = await gfetch('https://www.googleapis.com/drive/v3/files', {
       method:'POST', headers:{...Auth.authHeaders(),'Content-Type':'application/json'},
       body: JSON.stringify({name:CONFIG.SHEET_NAME, mimeType:'application/vnd.google-apps.spreadsheet', parents:[rootFolderId]})
     });
@@ -866,14 +868,14 @@ const GSheets = {
     // A fresh spreadsheet starts with one default tab; add our named tabs,
     // remove the default one, then write headers.
     const wanted = [CONFIG.TAB_EXPENSES, CONFIG.TAB_ITEMS, CONFIG.TAB_PAYMENTS, CONFIG.TAB_SETTINGS];
-    await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, {
+    await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, {
       method:'POST', headers:{...Auth.authHeaders(),'Content-Type':'application/json'},
       body: JSON.stringify({requests: wanted.map(title=>({addSheet:{properties:{title}}}))})
     });
-    const meta = await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=sheets.properties`, {headers:Auth.authHeaders()});
+    const meta = await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=sheets.properties`, {headers:Auth.authHeaders()});
     const stray = (meta.sheets||[]).find(s=>!wanted.includes(s.properties.title));
     if(stray){
-      await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, {
+      await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, {
         method:'POST', headers:{...Auth.authHeaders(),'Content-Type':'application/json'},
         body: JSON.stringify({requests:[{deleteSheet:{sheetId:stray.properties.sheetId}}]})
       });
@@ -884,11 +886,11 @@ const GSheets = {
   // wipe the old data rows (the app's local copy is the source of truth and is re-pushed
   // right after), and write the current headers.
   async migrateLayout(id){
-    const meta = await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=sheets.properties`, {headers:Auth.authHeaders()});
+    const meta = await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=sheets.properties`, {headers:Auth.authHeaders()});
     const titles = (meta.sheets||[]).map(s=>s.properties.title);
     const missing = [CONFIG.TAB_EXPENSES, CONFIG.TAB_ITEMS, CONFIG.TAB_PAYMENTS, CONFIG.TAB_SETTINGS].filter(t=>!titles.includes(t));
     if(missing.length){
-      await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, {
+      await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, {
         method:'POST', headers:{...Auth.authHeaders(),'Content-Type':'application/json'},
         body: JSON.stringify({requests: missing.map(title=>({addSheet:{properties:{title}}}))})
       });
@@ -897,7 +899,7 @@ const GSheets = {
     await this.writeHeaders(id);
   },
   async clearRanges(id, ranges){
-    await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values:batchClear`, {
+    await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values:batchClear`, {
       method:'POST', headers:{...Auth.authHeaders(),'Content-Type':'application/json'}, body: JSON.stringify({ranges})
     });
   },
@@ -911,18 +913,18 @@ const GSheets = {
     await this.batchUpdateValues(id, reqs);
   },
   async batchUpdateValues(id, valueRanges){
-    await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values:batchUpdate`, {
+    await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values:batchUpdate`, {
       method:'POST', headers:{...Auth.authHeaders(),'Content-Type':'application/json'},
       body: JSON.stringify({valueInputOption:'USER_ENTERED', data: valueRanges})
     });
   },
   async getValues(id, range){
-    const r = await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(range)}`, {headers:Auth.authHeaders()});
+    const r = await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(range)}`, {headers:Auth.authHeaders()});
     return r.values || [];
   },
   async appendRows(id, tab, rows){
     if(!rows.length) return;
-    await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(rng(tab,'A1'))}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
+    await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(rng(tab,'A1'))}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
       method:'POST', headers:{...Auth.authHeaders(),'Content-Type':'application/json'}, body: JSON.stringify({values:rows})
     });
   },
@@ -937,13 +939,13 @@ const GSheets = {
       await this.appendRows(id, tab, [row]);
     } else {
       const endCol = String.fromCharCode(64+row.length);
-      await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(rng(tab,'A'+rowIndex+':'+endCol+rowIndex))}?valueInputOption=USER_ENTERED`, {
+      await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(rng(tab,'A'+rowIndex+':'+endCol+rowIndex))}?valueInputOption=USER_ENTERED`, {
         method:'PUT', headers:{...Auth.authHeaders(),'Content-Type':'application/json'}, body: JSON.stringify({values:[row]})
       });
     }
   },
   async getTabSheetId(spreadsheetId, title){
-    const r = await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties`, {headers:Auth.authHeaders()});
+    const r = await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties`, {headers:Auth.authHeaders()});
     const sheet = (r.sheets||[]).find(s=>s.properties.title===title);
     return sheet ? sheet.properties.sheetId : null;
   },
@@ -956,7 +958,7 @@ const GSheets = {
   // Because old rows are removed first, re-running this can never create duplicates.
   async replaceMonthRows(spreadsheetId, monthKey, data){
     const tabs = Object.keys(data);
-    const meta = await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties`, {headers:Auth.authHeaders()});
+    const meta = await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties`, {headers:Auth.authHeaders()});
     const idOf = {}; (meta.sheets||[]).forEach(s=>{ idOf[s.properties.title] = s.properties.sheetId; });
     const requests = [];
     for(const tab of tabs){
@@ -967,7 +969,7 @@ const GSheets = {
       rows.sort((a,b)=>b-a).forEach(r=>requests.push({deleteDimension:{range:{sheetId:idOf[tab], dimension:'ROWS', startIndex:r-1, endIndex:r}}}));
     }
     if(requests.length){
-      await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+      await gfetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
         method:'POST', headers:{...Auth.authHeaders(),'Content-Type':'application/json'}, body: JSON.stringify({requests})
       });
     }
@@ -1268,13 +1270,9 @@ const App = {
     return {total, per, itemsTotal: Math.round(itemsTotal*100)/100};
   },
 
-  go(tab){
-    this.tab = tab;
-    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-    $('screen-'+tab).classList.add('active');
-    document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
-    this.render();
-  },
+  go(tab){ Shell.go('building', tab); },          // navigation now goes through the shell (module + route + nav state)
+  showTab(tab){ this.tab = tab; this.render(); },   // the building module's own "show this tab"
+
 
   shiftMonth(delta){
     const [y,m] = this.current.split('-').map(Number);
@@ -1288,6 +1286,7 @@ const App = {
   flush: debounce(()=>Sync.run(), 500),
 
   render(){
+    if(Shell.current !== 'building') return;        // another module is on screen: leave its UI alone
     const s = Cache.data.settings;
     const m = Cache.getMonth(this.current);
     const {total, per} = this.computeTotals(m);
@@ -1577,7 +1576,7 @@ const App = {
     Queue.push({type:'payment', payload:{monthKey: App.current, apt:p}});
   }, 500),
 
-  closeModal(){ $('modalBackdrop').classList.remove('open'); this.activeApt=null; },
+  closeModal(){ $('modalBackdrop').classList.remove('open'); this.activeApt=null; if(typeof Loan !== 'undefined') Loan.onModalClose(); },
 
   /* ---- History ---- */
   renderHistory(){
@@ -1764,6 +1763,7 @@ const App = {
         if(n>0) toast(t('toast_restored',{n}));
         this.render();
         Sync.run();
+        if(typeof Loan !== 'undefined') Loan.onSignedIn();
       } else {
         App.setSyncState('error'); toast(Sync.lastError || t('sync_error'));
       }
@@ -1805,7 +1805,146 @@ $('fileInput').addEventListener('change', (e)=>{
   e.target.value = '';
 });
 
-window.addEventListener('load', ()=>{ App.init(); App.go('dashboard'); });
+
+/* =========================================================================
+   SHELL — module switcher, per-module bottom navigation, routing
+   -------------------------------------------------------------------------
+   The shell owns only: the switcher, the bottom nav, the header label, the
+   URL route (#/<module>/<tab>) and remembering where you were. A module owns
+   its screens, data and logic and plugs in with Shell.register():
+
+     Shell.register({
+       id:'loan', icon:'🏦', labelKey:'mod_loans', defaultTab:'home',
+       chrome:{monthRow:false, syncPill:false},         // which shared header bits to show
+       tabs:[{id:'home', labelKey:'…', svg:'<svg…>'}, …],  // its own bottom nav
+       screenId:tab=>'screen-loan',                      // which <section class="screen"> to reveal
+       header:()=>({label:'…', name:'…'}),               // text under/next to the logo
+       show:tab=>{ … render that tab … },
+     });
+
+   Adding a future module = one register() call; nothing here changes.
+   ========================================================================= */
+const NAV_KEY = 'bsst_nav_v1';
+const Shell = {
+  mods:{}, order:[], current:'building', tabs:{}, _booted:false, _modalOpen:false, _ignorePop:false,
+
+  register(def){
+    if(!this.mods[def.id]) this.order.push(def.id);
+    this.mods[def.id] = def;
+    if(!this.tabs[def.id]) this.tabs[def.id] = def.defaultTab;
+    if(this._booted){ this.restoreTabs(); this.renderChrome(); }      // a module that registers late just appears in the switcher
+  },
+  def(){ return this.mods[this.current]; },
+  hasTab(mod, tab){ return !!(this.mods[mod] && this.mods[mod].tabs.some(x=>x.id===tab)); },
+
+  /* ----- remembering where you were ----- */
+  save(){ try{ localStorage.setItem(NAV_KEY, JSON.stringify({module:this.current, tabs:this.tabs})); }catch(e){} },
+  restoreTabs(){
+    try{ const s = JSON.parse(localStorage.getItem(NAV_KEY)||'null');
+      if(s && s.tabs) Object.keys(s.tabs).forEach(k=>{ if(this.hasTab(k, s.tabs[k])) this.tabs[k] = s.tabs[k]; });
+      return s && this.mods[s.module] ? s.module : null;
+    }catch(e){ return null; }
+  },
+
+  /* ----- routes: #/<module>/<tab> ----- */
+  parseHash(h){
+    const m = /^#\/([a-z0-9_-]+)(?:\/([a-z0-9_-]+))?/i.exec(h||''); if(!m || !this.mods[m[1]]) return null;
+    return {mod:m[1], tab: (m[2] && this.hasTab(m[1], m[2])) ? m[2] : this.tabs[m[1]]};
+  },
+  route(){ return '#/'+this.current+'/'+this.tabs[this.current]; },
+  _state(extra){ return Object.assign({shell:1, m:this.current, t:this.tabs[this.current]}, extra||{}); },
+  pushRoute(){ try{ history.pushState(this._state(), '', this.route()); }catch(e){} },
+  replaceRoute(){ try{ history.replaceState(this._state(), '', this.route()); }catch(e){} },
+
+  /* ----- go somewhere ----- */
+  go(mod, tab, o){
+    o = o || {};
+    const m = this.mods[mod]; if(!m) return;
+    if(!tab || !this.hasTab(mod, tab)) tab = this.tabs[mod] || m.defaultTab;
+    const moduleChanged = mod !== this.current, changed = moduleChanged || tab !== this.tabs[mod];
+    const prev = this.mods[this.current]; if(moduleChanged && prev && prev.onLeave) prev.onLeave();
+    this.current = mod; this.tabs[mod] = tab; this.save();
+    document.querySelectorAll('.screen').forEach(sc=>sc.classList.remove('active'));
+    const sc = $(m.screenId(tab)); if(sc) sc.classList.add('active');
+    this.renderChrome();
+    m.show(tab);
+    if(o.replace) this.replaceRoute(); else if(o.push!==false && changed) this.pushRoute();
+    if(moduleChanged && typeof window.scrollTo==='function'){ try{ window.scrollTo(0,0); }catch(e){} }
+  },
+  refresh(){ this.renderChrome(); const d = this.def(); if(d) d.show(this.tabs[this.current]); },
+
+  /* ----- chrome ----- */
+  renderHeader(){
+    const d = this.def(); if(!d) return; const h = d.header ? d.header() : {label:'', name:''};
+    const l = $('brandLabel'), n = $('brandName'); if(l) l.textContent = h.label; if(n) n.textContent = h.name;
+  },
+  renderChrome(){
+    const d = this.def(); if(!d) return;
+    const wrap = $('modWrap'), sw = $('modSwitch'), nav = $('bottomNav');
+    if(wrap) wrap.style.display = this.order.length > 1 ? '' : 'none';      // a single module needs no switcher
+    if(sw) sw.innerHTML = this.order.map(id=>{
+      const m = this.mods[id], on = id===this.current;
+      return `<button role="tab" aria-selected="${on}" class="${on?'active':''}" data-mod="${id}" onclick="Shell.go(this.dataset.mod)"><span aria-hidden="true">${m.icon}</span><span>${t(m.labelKey)}</span></button>`;
+    }).join('');
+    const cur = this.tabs[this.current];
+    if(nav) nav.innerHTML = d.tabs.map(tb=>`<button data-tab="${tb.id}" class="${tb.id===cur?'active':''}" ${tb.id===cur?'aria-current="page"':''} onclick="Shell.go('${d.id}','${tb.id}')">${tb.svg}<span>${t(tb.labelKey)}</span></button>`).join('');
+    const ch = d.chrome || {};
+    const mr = $('monthRow'); if(mr) mr.style.display = ch.monthRow ? '' : 'none';
+    const sp = $('syncPill'); if(sp) sp.style.display = ch.syncPill===false ? 'none' : '';
+    this.renderHeader();
+  },
+
+  /* ----- mobile Back button: undo the last navigation; close an open dialog first ----- */
+  watchModal(){
+    const bd = $('modalBackdrop'); if(!bd || typeof MutationObserver==='undefined') return;
+    new MutationObserver(()=>this.onModalClass(bd.classList.contains('open'))).observe(bd, {attributes:true, attributeFilter:['class']});
+  },
+  onModalClass(open){
+    if(open && !this._modalOpen){ this._modalOpen = true; try{ history.pushState(this._state({modal:1}), '', location.href); }catch(e){} }
+    else if(!open && this._modalOpen){
+      this._modalOpen = false;
+      if(history.state && history.state.modal){ this._ignorePop = true; try{ history.back(); }catch(e){ this._ignorePop = false; } }
+    }
+  },
+  onPop(e){
+    if(this._ignorePop){ this._ignorePop = false; return; }
+    if(this._modalOpen){                                            // Back closes the dialog, nothing else
+      this._modalOpen = false; const bd = $('modalBackdrop'); if(bd) bd.classList.remove('open'); App.activeApt = null;
+      if(typeof Loan !== 'undefined') Loan.onModalClose(); return;
+    }
+    const st = e && e.state, r = (st && st.shell && this.hasTab(st.m, st.t)) ? {mod:st.m, tab:st.t} : this.parseHash(location.hash);
+    if(r) this.go(r.mod, r.tab, {push:false});
+  },
+
+  /* ----- start: a link (#/loan/history) wins, otherwise the module you used last, otherwise Building ----- */
+  boot(){
+    const saved = this.restoreTabs(), h = this.parseHash(location.hash);
+    let mod = h ? h.mod : (saved || 'building'), tab = h ? h.tab : null;
+    if(!this.mods[mod]) mod = 'building';
+    this._booted = true;
+    window.addEventListener('popstate', e=>this.onPop(e));
+    this.watchModal();
+    this.go(mod, tab, {replace:true});
+  },
+};
+
+/* ---- the Building module (everything that existed before, unchanged) ---- */
+Shell.register({
+  id:'building', icon:'🏢', labelKey:'mod_building', defaultTab:'dashboard', chrome:{monthRow:true, syncPill:true},
+  tabs:[
+    {id:'dashboard', labelKey:'nav_dashboard', svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="5" rx="2"/><rect x="13" y="11" width="8" height="10" rx="2"/><rect x="3" y="14" width="8" height="7" rx="2"/></svg>'},
+    {id:'expenses',  labelKey:'nav_expenses',  svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V6a2 2 0 0 1 2-2h9l5 5v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M14 4v5h5"/><path d="M8 13h8M8 17h5"/></svg>'},
+    {id:'payments',  labelKey:'nav_payments',  svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/></svg>'},
+    {id:'history',   labelKey:'nav_history',   svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v5l3 2"/></svg>'},
+    {id:'settings',  labelKey:'nav_settings',  svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .35 1.9l.05.05a2 2 0 1 1-2.85 2.85l-.05-.05a1.7 1.7 0 0 0-1.9-.35 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.08a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.9.35l-.05.05a2 2 0 1 1-2.85-2.85l.05-.05a1.7 1.7 0 0 0 .35-1.9 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.08a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.35-1.9l-.05-.05a2 2 0 1 1 2.85-2.85l.05.05a1.7 1.7 0 0 0 1.9.35H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.08a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.9-.35l.05-.05a2 2 0 1 1 2.85 2.85l-.05.05a1.7 1.7 0 0 0-.35 1.9V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.08a1.7 1.7 0 0 0-1.55 1Z"/></svg>'},
+  ],
+  screenId: tab => 'screen-'+tab,
+  header: () => ({label:t('brand_label'), name:(Cache.data && Cache.data.settings.buildingName) || (Lang.cur==='ar' ? 'الخدمات المشتركة' : 'Shared Services')}),
+  show: tab => App.showTab(tab),
+});
+
+window.addEventListener('load', ()=>{ App.init(); Shell.boot(); });
 </script>
+<script src="loan.js?v=2"></script>
 </body>
 </html>
