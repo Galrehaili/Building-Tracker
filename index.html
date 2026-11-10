@@ -370,7 +370,7 @@
 
 /* ---------- CONFIG ---------- */
 const CONFIG = {
-  GOOGLE_CLIENT_ID: 'YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com',
+  GOOGLE_CLIENT_ID: '258433174381-8ces9s77r78jqrv22kr0tl7h2mkulilp.apps.googleusercontent.com',
   // drive.file is sufficient for the Sheets API too, for files this app creates —
   // no need for the much broader 'spreadsheets' scope. openid+email let the Worker
   // verify it's really you connecting, instead of trusting a hardcoded secret.
@@ -388,13 +388,13 @@ const CONFIG = {
   // No shared secret here on purpose: the worker verifies your real Google
   // identity at connect time and hands back a one-off session token, which
   // this app stores in localStorage — never in source code, never on GitHub.
-  WORKER_URL: 'https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev',
+  WORKER_URL: 'https://bsst-auth.gassan9933.workers.dev',
   // Mortgage tracker: lets you pick your EXISTING spreadsheet/folder with Google's file
   // picker. With the narrow drive.file scope, that picker is the only way the app can be
   // granted access to files it didn't create. Both values are public identifiers (the key is
   // locked to your site's address in Google Cloud), not secrets.
-  GOOGLE_API_KEY: 'YOUR_GOOGLE_API_KEY',
-  GOOGLE_APP_ID: 'YOUR_GOOGLE_PROJECT_NUMBER',
+  GOOGLE_API_KEY: 'AIzaSyCqcWGu95OI5qtbQGzhccUz98NrTW7bF_w',
+  GOOGLE_APP_ID: '258433174381',
 };
 
 const SHEET_LAYOUT = 3; // bump when the Google Sheet's columns/tabs change
